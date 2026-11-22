@@ -65,6 +65,29 @@ No assumed endpoint names. No simulations, provider mutations, generated calls, 
 
 There were **zero owned connected agents** in the development database before verification. No successful live ElevenLabs conversation import has been verified. SDK fixtures and any isolated browser-test fixture records are explicitly synthetic verification evidence, not live call measurements, and are never used as product fallbacks. A live acceptance check requires connecting a real account through the private Connect form, not sending credentials in chat.
 
+### Live connection blocker: built-in evaluations
+
+The user reported that choosing a real agent failed before the criteria preview
+could load with “This agent has a system evaluation criterion that cannot be
+imported as a plain-English prompt.” The importer incorrectly required every
+system evaluation attachment to have a matching inline prompt.
+
+The official [get-agent response](https://elevenlabs.io/docs/api-reference/agents/get.md)
+documents `source: system` attachments for
+`__system_eval_criteria_sentiment` and `__system_eval_criteria_frustration`,
+with an ID, optional scope and optional weight, but no prompt field. Loop now
+retains those references and labels unavailable prompts as provider-managed
+instead of blocking the entire connection or inventing scoring instructions.
+Any matching inline definition is still preserved. No additional provider
+endpoint is called for a built-in evaluation; preview and save still use
+`client.conversational_ai.agents.get(agent_id=...)` (confirmed).
+
+This correction is not evidence of a successful live import. The user still
+needs to complete Connect before live permissions, transcript/rationale import,
+delayed analyses, scheduled deduplication and account isolation can be confirmed.
+No simulations, generated calls, test execution, or provider mutations were
+performed for this correction.
+
 ## Schema and operational notes
 
 The additive development migration adds monitoring fields and the conversation table without assigning legacy unowned records to anyone. It was applied explicitly in development; the existing post-merge script already invokes that idempotent development setup. Nothing migrates automatically at application startup or in the production build. A future production rollout must apply the reviewed migration explicitly.

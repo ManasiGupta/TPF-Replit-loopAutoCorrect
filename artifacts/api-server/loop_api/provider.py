@@ -152,9 +152,31 @@ def load_agent(key: str, agent_id: str) -> tuple[str, list[dict]]:
             for ref in refs.evaluation_criteria or []:
                 if ref.source == "system":
                     match = next((i for i in inline if i.id == ref.analysis_item_id), None)
-                    if not match:
-                        raise HTTPException(422, "This agent has a system evaluation criterion that cannot be imported as a plain-English prompt. No connection was saved.")
-                    criteria.append({"remote_id": match.id, "name": match.name, "text": match.conversation_goal_prompt, "definition": match.model_dump(mode="json", exclude_none=True)})
+                    # Built-in evaluations are valid attachments, not user
+                    # analysis items. ElevenLabs need not expose their prompts.
+                    # Preserve their identity/scope/weight without fabricating
+                    # a scoring instruction or requesting a user-item endpoint.
+                    name = {
+                        "__system_eval_criteria_sentiment": "Sentiment",
+                        "__system_eval_criteria_frustration": "Frustration",
+                    }.get(ref.analysis_item_id, ref.analysis_item_id)
+                    definition = {
+                        "attachment": ref.model_dump(mode="json", exclude_none=True),
+                        "provider_managed": True,
+                        "prompt_available": match is not None,
+                    }
+                    if match is not None:
+                        definition["item"] = match.model_dump(mode="json", exclude_none=True)
+                    criteria.append({
+                        "remote_id": ref.analysis_item_id,
+                        "name": match.name if match is not None else name,
+                        "text": match.conversation_goal_prompt if match is not None else (
+                            f"{name} — Built-in ElevenLabs evaluation. "
+                            "Its scoring prompt is managed by ElevenLabs and is not exposed "
+                            "in this agent configuration. Existing call results are imported as reported."
+                        ),
+                        "definition": definition,
+                    })
                     continue
                 item = client.conversational_ai.analysis_items.get(analysis_item_id=ref.analysis_item_id)
                 if item.id != ref.analysis_item_id:

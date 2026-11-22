@@ -82,7 +82,7 @@ Keep this positioning in descriptions and design briefs. Preserve the user's sup
 - Vite's visual instrumentation can corrupt JSX with explicit generic type arguments (for example `<Component<Type> ...>`), even when TypeScript passes. Use inference/typed callbacks instead and verify the served module, not just tsc.
 - ElevenLabs docs: https://elevenlabs.io/docs/llms.txt . Confirm SDK names against official docs and installed SDK; do not guess.
 - Nebius base URL confirmed from official https://docs.tokenfactory.nebius.com/api-reference/introduction.md as https://api.tokenfactory.nebius.com/v1/; not authenticated in the user's console.
-- ElevenLabs analysis-item attachments are authoritative when present. Import stops explicitly for pinned historical/multiple versions or non-materialized system definitions rather than silently importing incorrect criteria.
+- ElevenLabs analysis-item attachments are authoritative when present. Resolve pinned/comparison user versions explicitly; built-in system evaluations can lack a prompt and must be retained as provider-managed references, never invented scoring instructions.
 - User-added criteria in Phase 1 are saved in Loop only; Phase 1 makes no provider writes.
 - Keep ENCRYPTION_KEY stable; replacing it without re-encrypting records makes saved credentials unreadable.
 - See `docs/private-connections.md` for ownership migration, encryption-source stability, managed Python auth proxy, and provider-call audit.
