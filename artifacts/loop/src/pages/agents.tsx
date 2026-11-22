@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AgentsPage() {
   const [search, setSearch] = useState("");
-  const query = useListAgents({ query: { queryKey: getListAgentsQueryKey(), retry: false } });
+  const query = useListAgents({ query: { queryKey: getListAgentsQueryKey(), retry: false, refetchInterval: 15000 } });
   const agents = query.data ?? [];
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -59,7 +59,7 @@ export default function AgentsPage() {
             <div className="flex items-center justify-between gap-6 border-t border-[#F0EEF5] pt-3 sm:border-0 sm:pt-0">
               <div className="flex gap-6">
                 <div><p className="font-mono text-[9px] uppercase tracking-[.14em] text-[#9693A4]">Pass rate</p><p className="mt-1 text-sm font-semibold tabular">{agent.passRate == null ? <span className="font-normal text-[#858295]">Not measured</span> : `${agent.passRate.toFixed(1)}%`}</p></div>
-                <div><p className="font-mono text-[9px] uppercase tracking-[.14em] text-[#9693A4]">Open failures</p><p className="mt-1 text-sm font-semibold tabular">{agent.openFailures == null ? <span className="font-normal text-[#858295]">Not measured</span> : agent.openFailures}</p></div>
+                <div><p className="font-mono text-[9px] uppercase tracking-[.14em] text-[#9693A4]">Failed calls</p><p className="mt-1 text-sm font-semibold tabular">{agent.openFailures == null ? <span className="font-normal text-[#858295]">Not measured</span> : agent.openFailures}</p></div>
               </div>
               <ArrowRight className="h-4 w-4 text-[#858295] transition-transform group-hover:translate-x-1 group-hover:text-[#5B4BFF]" />
             </div>

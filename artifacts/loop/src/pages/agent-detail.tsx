@@ -10,6 +10,7 @@ import { FixesTab } from "@/components/loop/workspace/fixes";
 import { VersionsTab } from "@/components/loop/workspace/versions";
 import { SettingsTab } from "@/components/loop/workspace/settings";
 import { cn } from "@/lib/utils";
+import { ConnectedCallsTab, ConnectedSettingsTab, MonitoringLine } from "@/components/loop/workspace/connected";
 import { getGetAgentQueryKey, useGetAgent } from "@workspace/api-client-react";
 import type { AgentDetail } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,17 +23,24 @@ export default function AgentDetailPage() {
   const search = useSearch();
   const [location, navigate] = useLocation();
   const { state } = useDemo();
-  const agent = location.startsWith("/sample/") ? state.agents.find((a) => a.id === id) : undefined;
-  const remoteQuery = useGetAgent(id, { query: { enabled: !agent, queryKey: getGetAgentQueryKey(id), retry: false } });
   const sampleRoute = location.startsWith("/sample/");
+  const agent = sampleRoute ? state.agents.find((a) => a.id === id) : undefined;
+  const remoteQuery = useGetAgent(id, { query: { enabled: !sampleRoute && !!id, queryKey: getGetAgentQueryKey(id), retry: false, refetchInterval: 15000 } });
   const backHref = sampleRoute ? "/sample" : "/agents";
   const raw = new URLSearchParams(search).get("tab") as TabKey | null;
   const tab: TabKey = raw && TABS.includes(raw) ? raw : "overview";
   const go = (t: TabKey) => navigate(`${sampleRoute ? "/sample" : "/agents"}/${id}${t === "overview" ? "" : `?tab=${t}`}`);
 
+  if (sampleRoute && !agent) return (
+    <div className="mx-auto max-w-xl rounded-xl border border-border bg-card p-8 text-center" data-testid="status-sample-missing">
+      <Empty icon={SearchX} title="Sample agent not found" body="This sample record does not exist in the demonstration workspace.">
+        <Link href="/sample" className="text-sm font-medium text-primary hover:underline">Back to sample agents</Link>
+      </Empty>
+    </div>
+  );
   if (!agent) {
     if (remoteQuery.isLoading) return <div className="mx-auto max-w-4xl space-y-4"><Skeleton className="h-8 w-32" /><Skeleton className="h-32 w-full rounded-2xl" /><Skeleton className="h-48 w-full rounded-2xl" /></div>;
-    if (remoteQuery.isError || !remoteQuery.data) return (
+    if (!remoteQuery.data) return (
       <div className="mx-auto max-w-xl rounded-xl border border-border bg-card p-8 text-center" data-testid="status-detail-error">
         <Empty icon={SearchX} title="Agent not found" body="This connected agent may have been removed or may not belong to your account.">
           <button type="button" onClick={() => remoteQuery.refetch()} className="mr-4 text-sm font-medium text-primary hover:underline">Retry</button>
@@ -40,7 +48,7 @@ export default function AgentDetailPage() {
         </Empty>
       </div>
     );
-    return <ConnectedAgentDetail agent={remoteQuery.data} backHref={backHref} />;
+    return <ConnectedAgentDetail agent={remoteQuery.data} backHref={backHref} tab={raw === "calls" || raw === "settings" ? raw : "overview"} onTab={(t) => navigate(`/agents/${id}${t === "overview" ? "" : `?tab=${t}`}`)} />;
   }
   const s = agentStats(state, id);
   const counts: Partial<Record<TabKey, number>> = { failures: s.openClusters, fixes: s.pendingFixes };
@@ -88,22 +96,43 @@ export default function AgentDetailPage() {
   );
 }
 
-function ConnectedAgentDetail({ agent, backHref }: { agent: AgentDetail; backHref: string }) {
-  const imported = agent.criteria.filter((criterion) => criterion.source === "imported");
-  const user = agent.criteria.filter((criterion) => criterion.source === "user");
+const CTABS = ["overview", "calls", "settings"] as const;
+type CTab = (typeof CTABS)[number];
+
+function ConnectedAgentDetail({ agent, backHref, tab, onTab }: { agent: AgentDetail; backHref: string; tab: CTab; onTab: (t: CTab) => void }) {
   return <div className="mx-auto max-w-5xl text-[#1A1A2E]">
     <Link href={backHref} data-testid="link-back" className="mb-6 inline-flex items-center gap-2 text-sm text-[#69677A] hover:text-[#5B4BFF]"><ArrowLeft className="h-4 w-4" /> Agents</Link>
-    <div className="mb-8 rounded-2xl border border-[#E7E4F0] bg-white p-5 sm:p-8">
-      <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[#5B4BFF]">Connected ElevenLabs agent</p>
-      <div className="mt-3 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-        <div className="min-w-0"><h1 className="font-display text-3xl font-semibold tracking-[-.035em] sm:text-4xl" data-testid="text-agent-name">{agent.name}</h1><p className="mt-2 truncate font-mono text-xs text-[#77758A]">Agent ID · {agent.remoteId}</p></div>
-        <span className="w-fit rounded-full bg-[#F2F0FF] px-3 py-1.5 font-mono text-xs text-[#5B4BFF]">{agent.platform}</span>
+    <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+      <div className="min-w-0">
+        <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[#5B4BFF]">Connected {agent.platform} agent</p>
+        <h1 className="mt-1 font-display text-3xl font-semibold tracking-[-.035em] sm:text-4xl" data-testid="text-agent-name">{agent.name}</h1>
+        <div className="mt-2 flex flex-wrap items-center gap-3"><span className="truncate font-mono text-xs text-[#77758A]">{agent.remoteId}</span><MonitoringLine m={agent.monitoring} /></div>
       </div>
-      {agent.warning && <p className="mt-5 rounded-xl border border-[#EADFC3] bg-[#FFFCF5] px-4 py-3 text-sm leading-relaxed text-[#735C25]">{agent.warning}</p>}
     </div>
+    <nav className="sticky top-[6.5rem] z-30 -mx-4 mb-6 overflow-x-auto border-b border-border bg-background/90 px-4 backdrop-blur sm:-mx-6 sm:px-6">
+      <div className="flex gap-1">
+        {CTABS.map((t) => <button key={t} type="button" onClick={() => onTab(t)} data-testid={`tab-${t}`} className={cn("relative whitespace-nowrap px-3 py-3 text-sm capitalize transition-colors", tab === t ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
+          {t}
+          <span className={cn("absolute inset-x-2 -bottom-px h-0.5 origin-left rounded-full bg-primary transition-transform duration-300", tab === t ? "scale-x-100" : "scale-x-0")} />
+        </button>)}
+      </div>
+    </nav>
+    <div key={tab} className="rise">
+      {tab === "overview" && <ConnectedOverview agent={agent} />}
+      {tab === "calls" && <ConnectedCallsTab agent={agent} />}
+      {tab === "settings" && <ConnectedSettingsTab agent={agent} />}
+    </div>
+  </div>;
+}
+
+function ConnectedOverview({ agent }: { agent: AgentDetail }) {
+  const imported = agent.criteria.filter((criterion) => criterion.source === "imported");
+  const user = agent.criteria.filter((criterion) => criterion.source === "user");
+  return <div>
+    {agent.warning && <p className="mb-5 rounded-xl border border-[#EADFC3] bg-[#FFFCF5] px-4 py-3 text-sm leading-relaxed text-[#735C25]">{agent.warning}</p>}
     <div className="mb-6 grid gap-3 sm:grid-cols-3">
       <div className="rounded-xl border border-[#E7E4F0] bg-white p-4"><p className="font-mono text-[10px] uppercase tracking-[.13em] text-[#8B889A]">Pass rate</p><p className="mt-2 font-display text-xl font-semibold">{agent.passRate == null ? "Not measured" : `${agent.passRate.toFixed(1)}%`}</p></div>
-      <div className="rounded-xl border border-[#E7E4F0] bg-white p-4"><p className="font-mono text-[10px] uppercase tracking-[.13em] text-[#8B889A]">Open failures</p><p className="mt-2 font-display text-xl font-semibold">{agent.openFailures == null ? "Not measured" : agent.openFailures}</p></div>
+      <div className="rounded-xl border border-[#E7E4F0] bg-white p-4"><p className="font-mono text-[10px] uppercase tracking-[.13em] text-[#8B889A]">Failed calls</p><p className="mt-2 font-display text-xl font-semibold">{agent.openFailures == null ? "Not measured" : agent.openFailures}</p></div>
       <div className="rounded-xl border border-[#E7E4F0] bg-white p-4"><p className="font-mono text-[10px] uppercase tracking-[.13em] text-[#8B889A]">Saved criteria</p><p className="mt-2 font-display text-xl font-semibold">{agent.criteriaCount}</p></div>
     </div>
     <div className="mb-6 rounded-2xl border border-[#E7E4F0] bg-white p-5 sm:p-6">
@@ -119,11 +148,11 @@ function ConnectedAgentDetail({ agent, backHref }: { agent: AgentDetail; backHre
         ].filter((group) => group.items.length > 0).map((group) => <section key={group.source}>
           <div className="mb-2 flex items-center justify-between"><h3 className="text-sm font-semibold">{group.title}</h3><span className="font-mono text-xs text-[#858295]">{group.items.length}</span></div>
           <ul className="divide-y divide-[#EFEDF5] rounded-xl border border-[#EAE8F1]">
-            {group.items.map((criterion, index) => <li key={criterion.id} className="flex items-start gap-3 px-4 py-3 text-sm leading-relaxed"><span className="pt-0.5 font-mono text-[10px] text-[#5B4BFF]">{String(index + 1).padStart(2, "0")}</span><span>{criterion.text || criterion.name}</span></li>)}
+            {group.items.map((criterion, index) => <li key={criterion.id} className="flex items-start gap-3 px-4 py-3 text-sm leading-relaxed"><span className="pt-0.5 font-mono text-[10px] text-[#5B4BFF]">{String(index + 1).padStart(2, "0")}</span><span className="flex-1">{criterion.text || criterion.name}</span><span className="shrink-0 font-mono text-[10.5px] tabular text-[#858295]" data-testid={`text-criterion-counts-${criterion.id}`}><span className="text-pass">{criterion.passed}</span> / <span className="text-destructive">{criterion.failed}</span> / {criterion.unknown} ?</span></li>)}
           </ul>
         </section>)}
       </div>}
     </div>
-    <div className="mt-5 flex items-start gap-2 rounded-xl bg-[#F5F3FF] p-4 text-xs leading-relaxed text-[#656279]"><span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#5B4BFF]" /><p>Call activity, monitoring status, and performance metrics are not yet measured for this connected record. No sample statistics are shown here.</p></div>
+    <div className="mt-5 flex items-start gap-2 rounded-xl bg-[#F5F3FF] p-4 text-xs leading-relaxed text-[#656279]"><span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#5B4BFF]" /><p>Metrics are measured from real calls only. Values show "Not measured" until enough results exist. No sample statistics are shown here.</p></div>
   </div>;
 }

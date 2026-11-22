@@ -110,7 +110,15 @@ export const ConnectAgentResponse = zod.object({
   "failed": zod.int(),
   "unknown": zod.int()
 })),
-  "warning": zod.string().nullable()
+  "warning": zod.string().nullable(),
+  "monitoring": zod.object({
+  "enabled": zod.boolean(),
+  "pollMinutes": zod.int(),
+  "lastAttemptAt": zod.string().nullable(),
+  "lastSuccessAt": zod.string().nullable(),
+  "nextPollAt": zod.string().nullable(),
+  "lastError": zod.string().nullable()
+})
 }))
 
 
@@ -139,7 +147,132 @@ export const GetAgentResponse = zod.object({
   "failed": zod.int(),
   "unknown": zod.int()
 })),
-  "warning": zod.string().nullable()
+  "warning": zod.string().nullable(),
+  "monitoring": zod.object({
+  "enabled": zod.boolean(),
+  "pollMinutes": zod.int(),
+  "lastAttemptAt": zod.string().nullable(),
+  "lastSuccessAt": zod.string().nullable(),
+  "nextPollAt": zod.string().nullable(),
+  "lastError": zod.string().nullable()
+})
+}))
+
+
+export const UpdateMonitoringParams = zod.object({
+  "id": zod.uuid()
+})
+
+export const updateMonitoringBodyPollMinutesMax = 1440;
+
+
+
+export const UpdateMonitoringBody = zod.object({
+  "enabled": zod.boolean(),
+  "pollMinutes": zod.int().min(1).max(updateMonitoringBodyPollMinutesMax)
+})
+
+export const UpdateMonitoringResponse = zod.object({
+  "enabled": zod.boolean(),
+  "pollMinutes": zod.int(),
+  "lastAttemptAt": zod.string().nullable(),
+  "lastSuccessAt": zod.string().nullable(),
+  "nextPollAt": zod.string().nullable(),
+  "lastError": zod.string().nullable()
+})
+
+
+export const PollAgentParams = zod.object({
+  "id": zod.uuid()
+})
+
+export const PollAgentResponse = zod.object({
+  "enabled": zod.boolean(),
+  "pollMinutes": zod.int(),
+  "lastAttemptAt": zod.string().nullable(),
+  "lastSuccessAt": zod.string().nullable(),
+  "nextPollAt": zod.string().nullable(),
+  "lastError": zod.string().nullable()
+})
+
+
+export const ListCallsParams = zod.object({
+  "id": zod.uuid()
+})
+
+export const listCallsQueryOffsetDefault = 0;
+export const listCallsQueryOffsetMin = 0;
+
+export const listCallsQueryLimitDefault = 30;
+export const listCallsQueryLimitMax = 100;
+
+
+
+export const ListCallsQueryParams = zod.object({
+  "result": zod.enum(['all', 'passed', 'failed', 'unknown']).optional(),
+  "source": zod.enum(['all', 'production', 'test', 'unknown']).optional(),
+  "offset": zod.coerce.number().int().min(listCallsQueryOffsetMin).default(listCallsQueryOffsetDefault),
+  "limit": zod.coerce.number().int().min(1).max(listCallsQueryLimitMax).default(listCallsQueryLimitDefault)
+})
+
+export const ListCallsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.string(),
+  "conversationId": zod.string(),
+  "startedAt": zod.string(),
+  "durationSecs": zod.int(),
+  "status": zod.string(),
+  "result": zod.enum(['passed', 'failed', 'unknown']),
+  "source": zod.enum(['production', 'test', 'unknown']),
+  "versionId": zod.string().nullable(),
+  "summary": zod.string().nullable(),
+  "evaluationCount": zod.int()
+})),
+  "total": zod.int(),
+  "offset": zod.int(),
+  "limit": zod.int(),
+  "monitoring": zod.object({
+  "enabled": zod.boolean(),
+  "pollMinutes": zod.int(),
+  "lastAttemptAt": zod.string().nullable(),
+  "lastSuccessAt": zod.string().nullable(),
+  "nextPollAt": zod.string().nullable(),
+  "lastError": zod.string().nullable()
+})
+})
+
+
+export const GetCallParams = zod.object({
+  "id": zod.uuid(),
+  "callId": zod.uuid()
+})
+
+export const GetCallResponse = zod.object({
+  "id": zod.string(),
+  "conversationId": zod.string(),
+  "startedAt": zod.string(),
+  "durationSecs": zod.int(),
+  "status": zod.string(),
+  "result": zod.enum(['passed', 'failed', 'unknown']),
+  "source": zod.enum(['production', 'test', 'unknown']),
+  "versionId": zod.string().nullable(),
+  "summary": zod.string().nullable(),
+  "evaluationCount": zod.int()
+}).and(zod.object({
+  "transcript": zod.array(zod.object({
+  "role": zod.string(),
+  "text": zod.string().nullable(),
+  "timeInCallSecs": zod.int()
+})),
+  "evaluations": zod.array(zod.object({
+  "criterionId": zod.string(),
+  "name": zod.string(),
+  "result": zod.enum(['success', 'failure', 'unknown']),
+  "rationale": zod.string(),
+  "score": zod.int().nullable(),
+  "maxScore": zod.int().nullable()
+})),
+  "environment": zod.string().nullable()
 }))
 
 

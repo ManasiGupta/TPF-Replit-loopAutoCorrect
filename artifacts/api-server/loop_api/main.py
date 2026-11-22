@@ -1,4 +1,7 @@
 import logging
+import asyncio
+import os
+from contextlib import asynccontextmanager
 from uuid import UUID
 
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -16,11 +19,28 @@ from .schemas import AgentDetail, AgentPreview, AgentSelection, AgentSummary, Co
 from .security import encrypt_api_key, get_cipher
 from .auth import authenticate_request, current_owner
 from .clerk_proxy import router as clerk_router
+from .calls import router as calls_router, measured_stats
+from .monitoring import monitor_loop, monitoring_state
 from .request_validation import CONNECTION_PATHS, connection_validation
 
 logger = logging.getLogger("loop")
-app = FastAPI(title="Loop API", docs_url="/api/docs", openapi_url="/api/openapi.json", redoc_url=None)
+
+
+@asynccontextmanager
+async def lifespan(app):
+    stop = asyncio.Event()
+    worker = None
+    if os.environ.get("LOOP_MONITORING_DISABLED") != "1":
+        worker = asyncio.create_task(monitor_loop(stop))
+    yield
+    stop.set()
+    if worker:
+        await worker
+
+
+app = FastAPI(title="Loop API", docs_url="/api/docs", openapi_url="/api/openapi.json", redoc_url=None, lifespan=lifespan)
 app.include_router(clerk_router)
+app.include_router(calls_router)
 
 
 @app.middleware("http")
@@ -77,14 +97,16 @@ def warning(count: int) -> str | None:
     return f"This agent has {count} of 30 evaluation criteria. ElevenLabs allows at most 30." if count >= 25 else None
 
 
-def serialize(agent: Agent, detail=False) -> dict:
+def serialize(agent: Agent, detail=False, session=None) -> dict:
     result = {
         "id": agent.id, "remoteId": agent.remote_id, "name": agent.name, "platform": agent.platform,
         "createdAt": agent.created_at.isoformat(), "criteriaCount": len(agent.criteria), "passRate": None,
-        "openFailures": None, "status": "connected", "keyMasked": "••••••••••••",
+        "openFailures": None, "status": "monitoring" if agent.monitoring_enabled else "paused", "keyMasked": "••••••••••••",
     }
     if detail:
-        result.update(criteria=[{"id": c.id, "name": c.name, "text": c.text, "source": c.source, "passed": 0, "failed": 0, "unknown": 0} for c in agent.criteria], warning=warning(len(agent.criteria)))
+        result.update(criteria=[{"id": c.id, "name": c.name, "text": c.text, "source": c.source, "passed": 0, "failed": 0, "unknown": 0} for c in agent.criteria], warning=warning(len(agent.criteria)), monitoring=monitoring_state(agent))
+    if session:
+        result.update(measured_stats(session, agent, detail))
     return result
 
 
@@ -99,8 +121,9 @@ def setup():
     messages = []
     try:
         with get_engine().connect() as connection:
-            connection.execute(text("SELECT id, owner_id FROM loop_agents LIMIT 0"))
+            connection.execute(text("SELECT id, owner_id, poll_minutes, next_poll_at FROM loop_agents LIMIT 0"))
             connection.execute(text("SELECT id FROM loop_eval_criteria LIMIT 0"))
+            connection.execute(text("SELECT id FROM loop_conversations LIMIT 0"))
         database_ready = True
     except (SQLAlchemyError, RuntimeError):
         messages.append("Database schema is not ready.")
@@ -129,7 +152,7 @@ def preview_agent(body: AgentSelection):
 
 @app.get("/api/agents", response_model=list[AgentSummary])
 def list_agents(session: Session = Depends(get_session), owner: str = Depends(current_owner)):
-    return [serialize(agent) for agent in session.scalars(select(Agent).where(Agent.owner_id == owner).order_by(Agent.created_at.desc())).all()]
+    return [serialize(agent, session=session) for agent in session.scalars(select(Agent).where(Agent.owner_id == owner).order_by(Agent.created_at.desc())).all()]
 
 
 @app.post("/api/agents", response_model=AgentDetail, status_code=201)
@@ -153,7 +176,7 @@ def connect_agent(body: ConnectionInput, session: Session = Depends(get_session)
         session.rollback()
         raise HTTPException(409, "This agent was already connected. Refresh the Agents list.") from None
     session.refresh(agent)
-    return serialize(agent, detail=True)
+    return serialize(agent, detail=True, session=session)
 
 
 @app.get("/api/agents/{agent_id}", response_model=AgentDetail)
@@ -161,4 +184,4 @@ def get_agent(agent_id: UUID, session: Session = Depends(get_session), owner: st
     agent = session.scalar(select(Agent).where(Agent.id == str(agent_id), Agent.owner_id == owner))
     if agent is None:
         raise HTTPException(404, "Connected agent not found.")
-    return serialize(agent, detail=True)
+    return serialize(agent, detail=True, session=session)

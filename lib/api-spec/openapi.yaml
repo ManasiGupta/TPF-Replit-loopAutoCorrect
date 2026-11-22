@@ -90,6 +90,60 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AgentDetail" }
+  /agents/{id}/monitoring:
+    parameters:
+      - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+    patch:
+      operationId: updateMonitoring
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MonitoringInput" }
+      responses:
+        "200":
+          description: Saved polling configuration
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Monitoring" }
+  /agents/{id}/poll:
+    post:
+      operationId: pollAgent
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Poll result or current state when not yet due. Errors are recorded in lastError.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Monitoring" }
+  /agents/{id}/calls:
+    get:
+      operationId: listCalls
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+        - { in: query, name: result, schema: { type: string, enum: [all, passed, failed, unknown] } }
+        - { in: query, name: source, schema: { type: string, enum: [all, production, test, unknown] } }
+        - { in: query, name: offset, schema: { type: integer, minimum: 0, default: 0 } }
+        - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 100, default: 30 } }
+      responses:
+        "200":
+          description: Owner-scoped stored calls, newest first
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CallPage" }
+  /agents/{id}/calls/{callId}:
+    get:
+      operationId: getCall
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+        - { in: path, name: callId, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200":
+          description: Private transcript and provider evaluations
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CallDetail" }
   /healthz:
     get:
       security: []
@@ -112,6 +166,72 @@ components:
       name: __session
       description: Clerk-managed same-origin session cookie. Never collect or attach session tokens manually in browser code.
   schemas:
+    MonitoringInput:
+      type: object
+      required: [enabled, pollMinutes]
+      additionalProperties: false
+      properties:
+        enabled: { type: boolean }
+        pollMinutes: { type: integer, minimum: 1, maximum: 1440 }
+    Monitoring:
+      type: object
+      required: [enabled, pollMinutes, lastAttemptAt, lastSuccessAt, nextPollAt, lastError]
+      properties:
+        enabled: { type: boolean }
+        pollMinutes: { type: integer }
+        lastAttemptAt: { type: ["string", "null"] }
+        lastSuccessAt: { type: ["string", "null"] }
+        nextPollAt: { type: ["string", "null"] }
+        lastError: { type: ["string", "null"] }
+    CallSummary:
+      type: object
+      required: [id, conversationId, startedAt, durationSecs, status, result, source, versionId, summary, evaluationCount]
+      properties:
+        id: { type: string }
+        conversationId: { type: string }
+        startedAt: { type: string }
+        durationSecs: { type: integer }
+        status: { type: string }
+        result: { type: string, enum: [passed, failed, unknown] }
+        source: { type: string, enum: [production, test, unknown] }
+        versionId: { type: ["string", "null"] }
+        summary: { type: ["string", "null"] }
+        evaluationCount: { type: integer }
+    TranscriptTurn:
+      type: object
+      required: [role, text, timeInCallSecs]
+      properties:
+        role: { type: string }
+        text: { type: ["string", "null"] }
+        timeInCallSecs: { type: integer }
+    CallEvaluation:
+      type: object
+      required: [criterionId, name, result, rationale, score, maxScore]
+      properties:
+        criterionId: { type: string }
+        name: { type: string }
+        result: { type: string, enum: [success, failure, unknown] }
+        rationale: { type: string }
+        score: { type: ["integer", "null"] }
+        maxScore: { type: ["integer", "null"] }
+    CallDetail:
+      allOf:
+        - $ref: "#/components/schemas/CallSummary"
+        - type: object
+          required: [transcript, evaluations, environment]
+          properties:
+            transcript: { type: array, items: { $ref: "#/components/schemas/TranscriptTurn" } }
+            evaluations: { type: array, items: { $ref: "#/components/schemas/CallEvaluation" } }
+            environment: { type: ["string", "null"] }
+    CallPage:
+      type: object
+      required: [items, total, offset, limit, monitoring]
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/CallSummary" } }
+        total: { type: integer }
+        offset: { type: integer }
+        limit: { type: integer }
+        monitoring: { $ref: "#/components/schemas/Monitoring" }
     Setup:
       type: object
       required: [databaseReady, encryptionReady, message]
@@ -184,10 +304,11 @@ components:
       allOf:
         - $ref: "#/components/schemas/Agent"
         - type: object
-          required: [criteria, warning]
+          required: [criteria, warning, monitoring]
           properties:
             criteria: { type: array, items: { $ref: "#/components/schemas/Criterion" } }
             warning: { type: ["string", "null"] }
+            monitoring: { $ref: "#/components/schemas/Monitoring" }
     HealthStatus:
       type: object
       properties:

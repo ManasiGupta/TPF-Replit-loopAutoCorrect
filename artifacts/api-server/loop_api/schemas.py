@@ -57,6 +57,7 @@ class AgentSummary(BaseModel):
 class AgentDetail(AgentSummary):
     criteria: list[Criterion]
     warning: str | None = None
+    monitoring: "Monitoring"
 
 
 class RemoteAgent(BaseModel):
@@ -76,3 +77,60 @@ class Setup(BaseModel):
     databaseReady: bool
     encryptionReady: bool
     message: str
+
+
+class MonitoringInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    enabled: bool = Field(strict=True)
+    pollMinutes: int = Field(strict=True, ge=1, le=1440)
+
+
+class Monitoring(BaseModel):
+    enabled: bool
+    pollMinutes: int
+    lastAttemptAt: str | None
+    lastSuccessAt: str | None
+    nextPollAt: str | None
+    lastError: str | None
+
+
+class CallSummary(BaseModel):
+    id: str
+    conversationId: str
+    startedAt: str
+    durationSecs: int
+    status: str
+    result: str
+    source: str
+    versionId: str | None
+    summary: str | None
+    evaluationCount: int
+
+
+class TranscriptTurn(BaseModel):
+    role: str
+    text: str | None
+    timeInCallSecs: int
+
+
+class CallEvaluation(BaseModel):
+    criterionId: str
+    name: str
+    result: str
+    rationale: str
+    score: int | None
+    maxScore: int | None
+
+
+class CallDetail(CallSummary):
+    transcript: list[TranscriptTurn]
+    evaluations: list[CallEvaluation]
+    environment: str | None
+
+
+class CallPage(BaseModel):
+    items: list[CallSummary]
+    total: int
+    offset: int
+    limit: int
+    monitoring: Monitoring

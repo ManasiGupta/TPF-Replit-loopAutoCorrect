@@ -7,9 +7,11 @@
  */
 import type { Agent } from './agent';
 import type { Criterion } from './criterion';
+import type { Monitoring } from './monitoring';
 
 export type AgentDetail = Agent & ({
   criteria: Criterion[];
   /** @nullable */
   warning: string | null;
+  monitoring: Monitoring;
 });

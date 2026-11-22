@@ -5,6 +5,103 @@
  * Private agent connections. All operations except health require a verified Clerk session cookie; saved agents and criteria are scoped to the authenticated owner.
  * OpenAPI spec version: 0.1.0
  */
+export interface MonitoringInput {
+  enabled: boolean;
+  /**
+     * @minimum 1
+     * @maximum 1440
+     */
+  pollMinutes: number;
+}
+
+export interface Monitoring {
+  enabled: boolean;
+  pollMinutes: number;
+  /** @nullable */
+  lastAttemptAt: string | null;
+  /** @nullable */
+  lastSuccessAt: string | null;
+  /** @nullable */
+  nextPollAt: string | null;
+  /** @nullable */
+  lastError: string | null;
+}
+
+export type CallSummaryResult = typeof CallSummaryResult[keyof typeof CallSummaryResult];
+
+
+export const CallSummaryResult = {
+  passed: 'passed',
+  failed: 'failed',
+  unknown: 'unknown',
+} as const;
+
+export type CallSummarySource = typeof CallSummarySource[keyof typeof CallSummarySource];
+
+
+export const CallSummarySource = {
+  production: 'production',
+  test: 'test',
+  unknown: 'unknown',
+} as const;
+
+export interface CallSummary {
+  id: string;
+  conversationId: string;
+  startedAt: string;
+  durationSecs: number;
+  status: string;
+  result: CallSummaryResult;
+  source: CallSummarySource;
+  /** @nullable */
+  versionId: string | null;
+  /** @nullable */
+  summary: string | null;
+  evaluationCount: number;
+}
+
+export interface TranscriptTurn {
+  role: string;
+  /** @nullable */
+  text: string | null;
+  timeInCallSecs: number;
+}
+
+export type CallEvaluationResult = typeof CallEvaluationResult[keyof typeof CallEvaluationResult];
+
+
+export const CallEvaluationResult = {
+  success: 'success',
+  failure: 'failure',
+  unknown: 'unknown',
+} as const;
+
+export interface CallEvaluation {
+  criterionId: string;
+  name: string;
+  result: CallEvaluationResult;
+  rationale: string;
+  /** @nullable */
+  score: number | null;
+  /** @nullable */
+  maxScore: number | null;
+}
+
+export type CallDetail = CallSummary & ({
+  transcript: TranscriptTurn[];
+  evaluations: CallEvaluation[];
+  /** @nullable */
+  environment: string | null;
+});
+
+export interface CallPage {
+  items: CallSummary[];
+  total: number;
+  offset: number;
+  limit: number;
+  monitoring: Monitoring;
+}
+
 export interface Setup {
   databaseReady: boolean;
   encryptionReady: boolean;
@@ -103,9 +200,44 @@ export type AgentDetail = Agent & ({
   criteria: Criterion[];
   /** @nullable */
   warning: string | null;
+  monitoring: Monitoring;
 });
 
 export interface HealthStatus {
   status: string;
 }
+
+export type ListCallsParams = {
+result?: ListCallsResult;
+source?: ListCallsSource;
+/**
+ * @minimum 0
+ */
+offset?: number;
+/**
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+};
+
+export type ListCallsResult = typeof ListCallsResult[keyof typeof ListCallsResult];
+
+
+export const ListCallsResult = {
+  all: 'all',
+  passed: 'passed',
+  failed: 'failed',
+  unknown: 'unknown',
+} as const;
+
+export type ListCallsSource = typeof ListCallsSource[keyof typeof ListCallsSource];
+
+
+export const ListCallsSource = {
+  all: 'all',
+  production: 'production',
+  test: 'test',
+  unknown: 'unknown',
+} as const;
 

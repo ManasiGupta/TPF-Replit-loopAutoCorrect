@@ -3,3 +3,4 @@
 - [Nebius prompt policy](nebius-prompt-policy.md) — keep the user's three system prompts verbatim; require JSON output and validation before saving.
 - [Navigation and brand](navigation-and-brand.md) — Home, Connect, and the workspace must feel consistent; distinguish all agents from one selected agent.
 - [Initial happy-path scope](initial-scope.md) — prioritize the happy path; do not implement agent disconnection unless the user reopens that scope.
+- [Provider test provenance](provider-test-provenance.md) — an ElevenLabs environment label is not proof that a test suite ran; shipping needs actual run evidence.

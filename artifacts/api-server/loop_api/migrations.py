@@ -17,4 +17,14 @@ def apply_schema(engine):
                     connection.execute(text(f"ALTER TABLE loop_agents DROP CONSTRAINT {name}"))
             connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_loop_agent_owner_remote ON loop_agents (owner_id, remote_id)"))
             connection.execute(text("CREATE INDEX IF NOT EXISTS ix_loop_agents_owner_id ON loop_agents (owner_id)"))
+            for definition in (
+                "monitoring_enabled BOOLEAN NOT NULL DEFAULT true",
+                "poll_minutes INTEGER NOT NULL DEFAULT 5",
+                "last_attempt_at TIMESTAMPTZ",
+                "last_success_at TIMESTAMPTZ",
+                "next_poll_at TIMESTAMPTZ",
+                "poll_error TEXT",
+            ):
+                connection.execute(text(f"ALTER TABLE loop_agents ADD COLUMN IF NOT EXISTS {definition}"))
+            connection.execute(text("CREATE INDEX IF NOT EXISTS ix_loop_agents_next_poll_at ON loop_agents (next_poll_at)"))
         Base.metadata.create_all(connection)
