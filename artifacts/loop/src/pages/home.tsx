@@ -48,6 +48,7 @@ export default function HomePage() {
           <Link href="/" aria-label="loop home" data-testid="link-home" className={`rounded-md ${focus}`}><LoopLogo textClassName="text-xl" /></Link>
           <nav aria-label="Main navigation" className="ml-auto flex items-center gap-0.5 text-xs text-[#1A1A2E]/60 sm:gap-1 sm:text-sm">
             <Link href="/" aria-label="Home" data-testid="link-nav-home" className={`inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-[#5B4BFF] ${focus}`}><Home className="h-3.5 w-3.5 sm:hidden" /><span className="hidden sm:inline">Home</span></Link>
+            <Link href="/demo" data-testid="link-nav-demo" className={`whitespace-nowrap rounded-md px-2 py-1.5 transition-colors hover:text-[#1A1A2E] ${focus}`}>Sample</Link>
             <Link href="/agents" data-testid="link-nav-agents" className={`whitespace-nowrap rounded-md px-2 py-1.5 transition-colors hover:text-[#1A1A2E] ${focus}`}>All agents</Link>
             <span aria-hidden className="mx-1 h-4 w-px bg-[#1A1A2E]/10" />
             <span className="hidden items-center gap-1 lg:inline-flex">
@@ -78,6 +79,9 @@ export default function HomePage() {
               <Link href="/connect" data-testid="link-connect-hero" className={`group inline-flex h-14 items-center gap-3 rounded-full bg-[#5B4BFF] pl-7 pr-2 text-base font-medium text-white shadow-[0_18px_40px_-16px_rgba(91,75,255,.7)] transition-transform duration-300 hover:-translate-y-0.5 active:scale-[.98] ${focus}`}>
                 Connect your agent
                 <span className="grid h-10 w-10 place-items-center rounded-full bg-white/15 transition-transform duration-300 group-hover:translate-x-0.5"><ArrowRight className="h-4 w-4" /></span>
+              </Link>
+              <Link href="/demo" data-testid="link-demo-hero" className={`mt-5 flex w-fit mx-auto items-center gap-1.5 rounded-md text-sm font-medium text-[#5B4BFF] hover:underline ${focus}`}>
+                Or explore a real sample agent, no sign-in <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
           </div>

@@ -124,6 +124,7 @@ paths:
         - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
         - { in: query, name: result, schema: { type: string, enum: [all, passed, failed, unknown] } }
         - { in: query, name: source, schema: { type: string, enum: [all, production, test, unknown] } }
+        - { in: query, name: category, schema: { type: string, maxLength: 1000, default: all }, description: "all, unknown, passed, other-failure, or criterion:<provider criterion ID>. Categories use recorded failures, not inferred diagnoses." }
         - { in: query, name: offset, schema: { type: integer, minimum: 0, default: 0 } }
         - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 100, default: 30 } }
       responses:
@@ -185,7 +186,7 @@ components:
         lastError: { type: ["string", "null"] }
     CallSummary:
       type: object
-      required: [id, conversationId, startedAt, durationSecs, status, result, source, versionId, summary, evaluationCount]
+      required: [id, conversationId, startedAt, durationSecs, status, result, source, versionId, summary, evaluationCount, failureReasons, criteriaCount, failedCriteriaCount, passedCriteriaCount, unknownCriteriaCount]
       properties:
         id: { type: string }
         conversationId: { type: string }
@@ -197,6 +198,11 @@ components:
         versionId: { type: ["string", "null"] }
         summary: { type: ["string", "null"] }
         evaluationCount: { type: integer }
+        failureReasons: { type: array, items: { $ref: "#/components/schemas/CallEvaluation" } }
+        criteriaCount: { type: integer, description: Distinct configured or reported criteria; missing results remain unknown }
+        failedCriteriaCount: { type: integer }
+        passedCriteriaCount: { type: integer }
+        unknownCriteriaCount: { type: integer }
     TranscriptTurn:
       type: object
       required: [role, text, timeInCallSecs]
@@ -225,13 +231,24 @@ components:
             environment: { type: ["string", "null"] }
     CallPage:
       type: object
-      required: [items, total, offset, limit, monitoring]
+      required: [items, total, offset, limit, monitoring, categories]
       properties:
         items: { type: array, items: { $ref: "#/components/schemas/CallSummary" } }
         total: { type: integer }
         offset: { type: integer }
         limit: { type: integer }
         monitoring: { $ref: "#/components/schemas/Monitoring" }
+        categories:
+          type: array
+          description: Counts across all saved calls matching source, independent of pagination and result/category filters. Calls may fail more than one criterion.
+          items: { $ref: "#/components/schemas/CallCategory" }
+    CallCategory:
+      type: object
+      required: [id, name, count]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        count: { type: integer }
     Setup:
       type: object
       required: [databaseReady, encryptionReady, message]
@@ -288,7 +305,7 @@ components:
         warning: { type: ["string", "null"] }
     Agent:
       type: object
-      required: [id, remoteId, name, platform, createdAt, criteriaCount, passRate, openFailures, status, keyMasked]
+      required: [id, remoteId, name, platform, createdAt, criteriaCount, failedCriteriaCount, passRate, openFailures, status, keyMasked]
       properties:
         id: { type: string }
         remoteId: { type: string }
@@ -296,6 +313,7 @@ components:
         platform: { type: string }
         createdAt: { type: string }
         criteriaCount: { type: integer }
+        failedCriteriaCount: { type: ["integer", "null"], description: Distinct criteria with recorded failures on completed production calls; null without measured criterion results }
         passRate: { type: ["number", "null"] }
         openFailures: { type: ["integer", "null"] }
         status: { type: string }

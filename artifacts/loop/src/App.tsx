@@ -10,6 +10,7 @@ import AgentDetailPage from '@/pages/agent-detail';
 import FixReviewPage from '@/pages/fix-review';
 import SampleAgentsPage from '@/pages/sample-agents';
 import SampleConnectPage from '@/pages/sample-connect';
+import DemoPage from '@/pages/demo';
 import { Shell } from '@/components/loop/shell';
 import { LoopLogo } from '@/components/loop/mark';
 import { ThemeProvider } from '@/components/loop/theme';
@@ -93,9 +94,10 @@ function ClerkQueryClientCacheInvalidator() {
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={HomeRedirect} />
+      <Route path="/" component={HomePage} />
       <Route path="/sign-in/*?" component={SignInPage} />
       <Route path="/sign-up/*?" component={SignUpPage} />
+      <Route path="/demo" component={DemoPage} />
       <Route><ProtectedRoutes /></Route>
     </Switch>
   );
@@ -138,12 +140,6 @@ function AuthFrame({ children }: { children: ReactNode }) {
 
 function SignInPage() { return <AuthPage kind="sign-in" />; }
 function SignUpPage() { return <AuthPage kind="sign-up" />; }
-
-function HomeRedirect() {
-  const { isLoaded, isSignedIn } = useAuth();
-  if (!isLoaded) return <div className="min-h-[100dvh] animate-pulse bg-[#FDFDFF]" />;
-  return isSignedIn ? <Redirect to="/agents" /> : <HomePage />;
-}
 
 function ProtectedRoutes() {
   const { isLoaded, isSignedIn, userId } = useAuth();

@@ -11,6 +11,8 @@ from .database import get_session
 from .models import Agent, Conversation
 from .monitoring import locked_agent, monitoring_state, poll_locked, utcnow
 from .schemas import CallDetail, CallPage, Monitoring, MonitoringInput
+from .call_categories import category_filter, conversation_categories
+from .criterion_metrics import criterion_breakdown
 
 router = APIRouter(prefix="/api/agents")
 
@@ -28,6 +30,8 @@ def serialize_call(call: Conversation, detail=False, criteria=()):
         "durationSecs": call.duration_secs, "status": call.status, "result": call.result,
         "source": call.source, "versionId": call.version_id, "summary": call.summary,
         "evaluationCount": len(call.evaluations),
+        "failureReasons": [item for item in call.evaluations if item["result"] == "failure"] if call.status in ("done", "failed") else [],
+        **criterion_breakdown(call.evaluations, criteria, completed=call.status in ("done", "failed")),
     }
     if detail:
         evaluations = list(call.evaluations)
@@ -71,11 +75,12 @@ def list_calls(
     agent_id: UUID,
     result: Literal["all", "passed", "failed", "unknown"] = "all",
     source: Literal["all", "production", "test", "unknown"] = "all",
+    category: str = Query(default="all", max_length=1000),
     offset: int = Query(default=0, ge=0), limit: int = Query(default=30, ge=1, le=100),
     session: Session = Depends(get_session), owner: str = Depends(current_owner),
 ):
     agent = owned_agent(session, agent_id, owner)
-    filters = [Conversation.agent_id == agent.id]
+    filters = [Conversation.agent_id == agent.id, category_filter(category)]
     if result != "all":
         filters.append(Conversation.result == result)
     if source != "all":
@@ -84,8 +89,9 @@ def list_calls(
     rows = session.scalars(select(Conversation).where(*filters).order_by(
         Conversation.started_at.desc(), Conversation.id.desc(),
     ).offset(offset).limit(limit))
-    return {"items": [serialize_call(row) for row in rows], "total": total,
-            "offset": offset, "limit": limit, "monitoring": monitoring_state(agent)}
+    return {"items": [serialize_call(row, criteria=agent.criteria) for row in rows], "total": total,
+            "offset": offset, "limit": limit, "monitoring": monitoring_state(agent),
+            "categories": conversation_categories(session, agent, source)}
 
 
 @router.get("/{agent_id}/calls/{call_id}", response_model=CallDetail)
@@ -107,6 +113,18 @@ def measured_stats(session, agent: Agent, detail=False):
         # Clusters aren't built in this phase; this is a failed-call count.
         "openFailures": groups.get("failed", 0) if groups else None,
     }
+    failed_ids = set()
+    has_measured_criteria = False
+    for results in session.scalars(select(Conversation.evaluations).where(
+        Conversation.agent_id == agent.id, Conversation.source == "production",
+        Conversation.status.in_(["done", "failed"]),
+    )):
+        for result in results:
+            if result["result"] in ("success", "failure"):
+                has_measured_criteria = True
+            if result["result"] == "failure":
+                failed_ids.add(result["criterionId"])
+    stats["failedCriteriaCount"] = len(failed_ids) if has_measured_criteria else None
     if detail:
         counts = {criterion.remote_id: {"success": 0, "failure": 0, "unknown": 0} for criterion in agent.criteria if criterion.remote_id}
         total = 0

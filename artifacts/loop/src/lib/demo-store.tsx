@@ -182,11 +182,10 @@ export function useDemo() {
 }
 
 export function agentStats(s: DemoState, agentId: string) {
-  const agent = s.agents.find((a) => a.id === agentId);
-  const live = s.versions.find((v) => v.agentId === agentId && v.n === agent?.liveVersion);
   const fl = s.failures.filter((f) => f.agentId === agentId);
   return {
-    passRate: live?.passRate ?? null,
+    criteria: s.criteria.filter((c) => c.agentId === agentId).length,
+    failedCriteria: new Set(s.calls.filter((c) => c.agentId === agentId).flatMap((c) => c.results.filter((r) => !r.pass).map((r) => r.criterionId))).size,
     open: fl.filter((f) => f.status !== "fixed").reduce((n, f) => n + f.callIds.length, 0),
     openClusters: fl.filter((f) => f.status !== "fixed").length,
     fixed: fl.filter((f) => f.status === "fixed").reduce((n, f) => n + f.callIds.length, 0),

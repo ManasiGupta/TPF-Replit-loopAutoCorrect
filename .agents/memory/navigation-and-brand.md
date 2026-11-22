@@ -14,3 +14,12 @@ After connection, open that agent's own workspace, not the sample workspace. Sho
 **Why:** The user wants to run tests in ElevenLabs and see those conversations on their agent's Loop dashboard.
 
 **How to apply:** Keep samples outside connected-agent routes and make the real agent workspace the primary post-connection destination.
+
+The same previously agreed homepage content must remain the Home page both
+before and after connecting an agent.
+
+**Why:** The user said that content explains what Loop does and explicitly
+asked to reinstate it after connection.
+
+**How to apply:** Do not replace Home with an authenticated redirect to the
+agent list. Keep Home, All agents, and the selected agent's workspace distinct.

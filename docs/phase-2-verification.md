@@ -61,9 +61,9 @@ No assumed endpoint names. No simulations, provider mutations, generated calls, 
 - All seeded browser-test agent, criterion, and conversation records were removed after verification. The two isolated authentication test accounts remain. No provider requests were made by that pass because its fixture connection stayed paused.
 - Backend test execution emitted only the existing Starlette warning about its HTTPX TestClient transport.
 
-## Live-account limitation
+## Live-account verification
 
-There were **zero owned connected agents** in the development database before verification. No successful live ElevenLabs conversation import has been verified. SDK fixtures and any isolated browser-test fixture records are explicitly synthetic verification evidence, not live call measurements, and are never used as product fallbacks. A live acceptance check requires connecting a real account through the private Connect form, not sending credentials in chat.
+There were **zero owned connected agents** in the development database during the original implementation verification, so that work did not verify a live import. Subsequent live evidence is recorded below. SDK fixtures and any isolated browser-test fixture records remain explicitly synthetic verification evidence, not live call measurements, and are never used as product fallbacks. A live acceptance check requires connecting a real account through the private Connect form, not sending credentials in chat.
 
 ### Live connection blocker: built-in evaluations
 
@@ -82,11 +82,102 @@ Any matching inline definition is still preserved. No additional provider
 endpoint is called for a built-in evaluation; preview and save still use
 `client.conversational_ai.agents.get(agent_id=...)` (confirmed).
 
-This correction is not evidence of a successful live import. The user still
-needs to complete Connect before live permissions, transcript/rationale import,
-delayed analyses, scheduled deduplication and account isolation can be confirmed.
+The correction alone was not evidence of a successful live import. At that point
+Connect still needed to be completed before live permissions, transcript/rationale
+import, delayed analyses, scheduled deduplication and account isolation could be confirmed.
 No simulations, generated calls, test execution, or provider mutations were
 performed for this correction.
+
+### Subsequent live evidence, November 22, 2026
+
+- The user confirmed that criteria loaded and the agent connected through
+  the private Connect form after the system-evaluation correction.
+- The first scheduled attempt at **10:43:39 UTC** succeeded with no saved
+  monitoring error. The private connection retained nine criteria and five calls.
+- All five calls were labeled `production` by the provider and had transcripts.
+  One provider-failed call had nine evaluation results and nine nonempty
+  rationales. Four `done` calls had no evaluation results and were correctly
+  retained as unknown, not counted as passes.
+- A separate read-only SDK fetch through the existing provider adapter returned
+  five conversations. All five matched saved status, classification, source,
+  environment, version, summary, transcripts, and evaluation evidence.
+  This exercised real `conversations.list` and `conversations.get` permissions;
+  only aggregate comparison counts were printed, not private content or keys.
+- No duplicate connection/conversation groups existed at this observation.
+- Two additional scheduled refreshes succeeded at **10:48:41 UTC** and
+  **10:53:44 UTC**, at the unchanged five-minute interval, with no saved errors.
+  The first retained five unique calls; the second imported two new calls,
+  producing seven unique calls without duplication. Existing calls did not
+  change during either observation.
+- A real delayed-analysis transition and second-account sign-in isolation have
+  **not yet been confirmed**. Existing fixture evidence above does not
+  substitute for either live check.
+
+No simulations, generated conversations, test runs, provider writes, or
+deployments were performed for these live observations.
+
+### Subsequent presentation requirement: criterion-level evidence
+
+The user rejected overall binary pass-rate metrics. Connected-agent and
+real-sample presentation now prioritizes configured evaluation criteria,
+distinct criteria with recorded failures, and each call's failed/passed/unknown
+criterion counts. Legacy aggregate fields remain in the API for compatibility,
+not as the displayed performance score.
+
+Per-call counts deduplicate repeated versions of the same criterion, with a
+failure taking precedence over an unknown or success. Missing configured
+criteria remain unknown, including Loop-only criteria. In-progress calls remain
+unknown until the provider finishes. The denominator is the union of configured
+and reported criterion identities, so historical provider-only results are not
+silently dropped. Numeric provider scores are retained unchanged in details.
+
+“Criteria with failures” counts distinct criterion identities with a recorded
+failure on completed production calls. It is not a failed-call total or a pass
+percentage. Without any measured criterion results, the headline is unmeasured,
+not a synthetic zero. Failed-criterion categories depend on actual criterion
+evidence rather than the provider's overall binary call verdict.
+
+## Demo and conversation organization
+
+The user subsequently approved sharing an **original-content frozen snapshot**
+of their current connection for demos. `/demo` is intentionally public and
+read-only. It includes recorded criteria, metrics, original transcripts and
+evaluation rationales, but never the connection key, its ciphertext, the
+account owner's identity, or an authenticated API session. This is an explicit
+sample disclosure, not a relaxation of private API ownership rules.
+
+`scripts/export_demo_snapshot.py` requires an explicit connection selection and
+sharing-approval flag. It loads only allowlisted agent columns, validates the
+call/criterion display schemas and writes bundled JSON. It neither contacts
+ElevenLabs nor changes PostgreSQL. The JSON is a frozen demo asset and is not
+refreshed by visitors. Refreshing it later is a separate, deliberate export.
+The synthetic `/sample` examples remain labeled separately.
+
+Connected calls now expose source-scoped category counts across all saved calls,
+not merely the current page. A `criterion:<id>` category groups calls classified
+as failed with a recorded failure for that criterion. Repeated versions count
+once per call per category; a call may appear in multiple criterion categories.
+Provider-reported failures without a failed criterion go in “Other reported
+failure.” Unknown/not-evaluated and passed calls stay separate. These are
+recorded evaluation categories, **not** model-generated root causes, clusters,
+or a fixed/open lifecycle. List rows include the provider's failure rationales.
+
+The supplied ElevenLabs branch-preview link appears only on the matching real
+agent and its sample. Visitors open ElevenLabs separately and initiate any
+conversation themselves; Loop does not simulate or start calls, modify sharing
+settings, or grant provider access. The real workspace refreshes after provider
+analysis and scheduled import; the frozen sample explicitly does not.
+
+Verification of these additions used the real saved connection, without seeded
+records or test execution: the category query returned seven calls, and every
+category count matched its corresponding filtered database query. The full
+list response passed its response-schema validation. API health returned 200;
+signed-out access to private calls returned 401. OpenAPI generation, library
+declarations, the Loop typecheck, Python compilation and whitespace checks
+passed. Both managed workflows restarted cleanly. Public `/demo` rendered
+without sign-in in desktop and 390px screenshots, showing the real snapshot,
+failed-criterion groups and exact external preview link. Screenshots do not
+constitute an interactive browser pass or a second-account isolation check.
 
 ## Schema and operational notes
 

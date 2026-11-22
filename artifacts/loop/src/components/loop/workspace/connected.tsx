@@ -12,6 +12,8 @@ import { Switch } from "@/components/ui/switch";
 import { Empty, Segmented, Tag, ago, fmtDur, fmtTime } from "@/components/loop/ui";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { CriteriaBreakdown } from "@/components/loop/criteria-breakdown";
+import { CallCategories, CallFailureReasons } from "@/components/loop/call-categories";
 
 const REFRESH = 15000;
 const PAGE = 25;
@@ -77,14 +79,15 @@ function PollButton({ agentId, m }: { agentId: string; m: Monitoring }) {
 }
 
 type RF = "all" | "failed" | "passed" | "unknown";
-type SF = "all" | "production" | "test";
+type SF = "all" | "production" | "test" | "unknown";
 
 export function ConnectedCallsTab({ agent }: { agent: AgentDetail }) {
   const [result, setResult] = useState<RF>("all");
   const [source, setSource] = useState<SF>("all");
+  const [category, setCategory] = useState("all");
   const [offset, setOffset] = useState(0);
   const [open, setOpen] = useState<string | null>(null);
-  const params = { result: result as ListCallsResult, source: source as ListCallsSource, offset, limit: PAGE };
+  const params = { result: result as ListCallsResult, source: source as ListCallsSource, category, offset, limit: PAGE };
   const q = useListCalls(agent.id, params, { query: { queryKey: getListCallsQueryKey(agent.id, params), refetchInterval: REFRESH } });
   const page = q.data;
   const m = page?.monitoring ?? agent.monitoring;
@@ -92,27 +95,29 @@ export function ConnectedCallsTab({ agent }: { agent: AgentDetail }) {
   return <>
     <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        <Segmented value={result} onChange={(v) => { setResult(v as RF); setOffset(0); }} testId="filter-result" options={(["all", "failed", "passed", "unknown"] as RF[]).map((v) => ({ value: v, label: v[0].toUpperCase() + v.slice(1) }))} />
-        <Segmented value={source} onChange={(v) => { setSource(v as SF); setOffset(0); }} testId="filter-source" options={(["all", "production", "test"] as SF[]).map((v) => ({ value: v, label: v === "all" ? "Any source" : v[0].toUpperCase() + v.slice(1) }))} />
+        <Segmented value={result} onChange={(v) => { setResult(v as RF); setCategory("all"); setOffset(0); }} testId="filter-result" options={(["all", "failed", "passed", "unknown"] as RF[]).map((v) => ({ value: v, label: v === "all" ? "Any provider result" : `Provider: ${v}` }))} />
+        <Segmented value={source} onChange={(v) => { setSource(v as SF); setCategory("all"); setOffset(0); }} testId="filter-source" options={(["all", "production", "test", "unknown"] as SF[]).map((v) => ({ value: v, label: v === "all" ? "Any source" : v[0].toUpperCase() + v.slice(1) }))} />
       </div>
       <PollButton agentId={agent.id} m={m} />
     </div>
     <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><MonitoringLine m={m} />{m.lastError && <span className="inline-flex items-center gap-1 text-xs text-warn" data-testid="text-poll-error"><AlertTriangle className="h-3.5 w-3.5" />{m.lastError}</span>}</div>
+    {page && <CallCategories categories={page.categories} value={category} onChange={(id) => { setCategory(id); setResult("all"); setOffset(0); }} />}
 
     <div className="overflow-hidden rounded-xl border border-border bg-card">
       {q.isLoading ? <div className="space-y-px">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="flex items-center gap-4 px-4 py-3.5"><Skeleton className="h-3 w-24" /><Skeleton className="h-3 flex-1" /><Skeleton className="h-4 w-16 rounded-full" /></div>)}</div>
         : q.isError ? <Empty icon={AlertTriangle} title="Calls could not load" body={errMsg(q.error)}><button type="button" data-testid="button-retry-calls" onClick={() => q.refetch()} className="text-sm font-medium text-primary hover:underline">Retry</button></Empty>
-        : !page || page.items.length === 0 ? <Empty icon={PhoneOff} title={result === "all" && source === "all" ? "No calls recorded yet" : "No calls match"} body={result === "all" && source === "all" ? (m.enabled ? "Real conversations appear here after the next scheduled check finds them." : "Monitoring is paused. Turn it on in settings to start collecting calls.") : "Try a different result or source filter."} />
+        : !page || page.items.length === 0 ? <Empty icon={PhoneOff} title={result === "all" && source === "all" && category === "all" ? "No calls recorded yet" : "No calls match"} body={result === "all" && source === "all" && category === "all" ? (m.enabled ? "Real conversations appear here after the next scheduled check finds them." : "Monitoring is paused. Turn it on in settings to start collecting calls.") : "Try a different category, result or source filter."} />
         : <ul className={cn("divide-y divide-border transition-opacity", q.isFetching && q.isPlaceholderData && "opacity-60")} data-testid="list-calls">
           {page.items.map((c) => <li key={c.id}>
-            <button type="button" onClick={() => setOpen(c.id)} data-testid={`row-call-${c.id}`} className="group grid w-full grid-cols-[1fr_auto] items-center gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-secondary/50 sm:grid-cols-[8.5rem_1fr_6.5rem_3.5rem_4.5rem_auto]">
+            <button type="button" onClick={() => setOpen(c.id)} data-testid={`row-call-${c.id}`} className="group grid w-full grid-cols-1 items-center gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-secondary/50 xl:grid-cols-[8.5rem_minmax(0,1fr)_6.5rem_3.5rem_4.5rem_auto]">
               <span className="font-mono text-xs text-muted-foreground">{fmtTime(c.startedAt)}</span>
               <span className={cn("hidden min-w-0 truncate sm:block", !c.summary && "italic text-muted-foreground")}>{c.summary ?? "No summary provided"}</span>
-              <span className="hidden sm:block"><Tag className={cn(c.source === "unknown" && "border-dashed text-muted-foreground")}>{c.source === "unknown" ? "source ?" : c.source}</Tag></span>
-              <span className="hidden font-mono text-xs text-muted-foreground tabular sm:block">{fmtDur(c.durationSecs)}</span>
-              <span className="hidden font-mono text-[11px] text-muted-foreground tabular sm:block">{c.evaluationCount} eval{c.evaluationCount === 1 ? "" : "s"}</span>
-              <ResultPill result={c.result} />
+              <span className="hidden xl:block"><Tag className={cn(c.source === "unknown" && "border-dashed text-muted-foreground")}>{c.source === "unknown" ? "source ?" : c.source}</Tag></span>
+              <span className="hidden font-mono text-xs text-muted-foreground tabular xl:block">{fmtDur(c.durationSecs)}</span>
+              <span className="hidden font-mono text-[11px] text-muted-foreground tabular xl:block">{c.evaluationCount} eval{c.evaluationCount === 1 ? "" : "s"}</span>
+              <CriteriaBreakdown total={c.criteriaCount} failed={c.failedCriteriaCount} unknown={c.unknownCriteriaCount} testId={`text-call-criteria-${c.id}`} />
             </button>
+            {c.failureReasons.length > 0 && <div className="px-4 pb-3"><CallFailureReasons reasons={c.failureReasons} /></div>}
           </li>)}
         </ul>}
     </div>
@@ -123,7 +128,7 @@ export function ConnectedCallsTab({ agent }: { agent: AgentDetail }) {
         <button type="button" aria-label="Next calls page" data-testid="button-next-page" disabled={page.offset + page.items.length >= page.total || q.isFetching} onClick={() => setOffset(offset + PAGE)} className="rounded-md border border-border p-1.5 hover:bg-secondary disabled:opacity-40"><ChevronRight className="h-3.5 w-3.5" /></button>
       </div>
     </div>}
-    <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">Source reflects an explicit production or test environment reported by the provider, not a verified test-suite run. Missing or custom environments are unknown. Pass rates use measured production calls only; unknown evaluations are excluded.</p>
+    <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">Source reflects an explicit production or test environment reported by the provider, not a verified test-suite run. Missing or custom environments are unknown. Each call shows how many of its criteria failed and how many have unknown results; unknown is never counted as a pass or failure.</p>
 
     <Sheet open={!!open} onOpenChange={(o) => !o && setOpen(null)}>
       <SheetContent className="w-full overflow-y-auto sm:max-w-xl">{open && <CallSheet agentId={agent.id} callId={open} />}</SheetContent>
@@ -138,7 +143,7 @@ function CallSheet({ agentId, callId }: { agentId: string; callId: string }) {
   const c = q.data;
   return <>
     <SheetHeader className="text-left">
-      <div className="flex flex-wrap items-center gap-2"><ResultPill result={c.result} /><Tag>{c.source}</Tag>{c.versionId && <Tag>{c.versionId}</Tag>}<Tag>{c.status}</Tag></div>
+      <div className="flex flex-wrap items-center gap-2"><CriteriaBreakdown total={c.criteriaCount} failed={c.failedCriteriaCount} unknown={c.unknownCriteriaCount} /><Tag>{c.source}</Tag>{c.versionId && <Tag>{c.versionId}</Tag>}<Tag>{c.status}</Tag></div>
       <SheetTitle className="font-display text-xl" data-testid="text-call-title">{c.summary ?? "Conversation"}</SheetTitle>
       <SheetDescription className="break-all font-mono text-xs">{fmtTime(c.startedAt)} · {fmtDur(c.durationSecs)} · {c.conversationId}{c.environment ? ` · env ${c.environment}` : ""}</SheetDescription>
     </SheetHeader>

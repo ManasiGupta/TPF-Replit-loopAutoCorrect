@@ -48,6 +48,7 @@ class AgentSummary(BaseModel):
     platform: str
     createdAt: str
     criteriaCount: int
+    failedCriteriaCount: int | None = None
     passRate: float | None = None
     openFailures: int | None = None
     status: str = "connected"
@@ -105,6 +106,11 @@ class CallSummary(BaseModel):
     versionId: str | None
     summary: str | None
     evaluationCount: int
+    failureReasons: list["CallEvaluation"]
+    criteriaCount: int
+    failedCriteriaCount: int
+    passedCriteriaCount: int
+    unknownCriteriaCount: int
 
 
 class TranscriptTurn(BaseModel):
@@ -128,9 +134,16 @@ class CallDetail(CallSummary):
     environment: str | None
 
 
+class CallCategory(BaseModel):
+    id: str
+    name: str
+    count: int
+
+
 class CallPage(BaseModel):
     items: list[CallSummary]
     total: int
     offset: int
     limit: int
     monitoring: Monitoring
+    categories: list[CallCategory]

@@ -5,6 +5,7 @@ import { useDemo } from "@/lib/demo-store";
 import type { Call } from "@/lib/demo-types";
 import { Empty, Panel, Segmented, Tag, Verdict, fmtDur, fmtTime } from "@/components/loop/ui";
 import { cn } from "@/lib/utils";
+import { CriteriaBreakdown } from "@/components/loop/criteria-breakdown";
 
 type Filter = "all" | "failed" | "passed" | "production" | "test";
 
@@ -34,7 +35,7 @@ export function CallsTab({ agentId }: { agentId: string }) {
                   <span className="hidden sm:block"><Tag>{c.kind}</Tag></span>
                   <span className="hidden font-mono text-xs text-muted-foreground tabular sm:block">{fmtDur(c.durationSec)}</span>
                   <span className="hidden font-mono text-xs text-muted-foreground sm:block">v{c.version}</span>
-                  <Verdict pass={c.passed} />
+                  <CriteriaBreakdown total={c.results.length} failed={c.results.filter((r) => !r.pass).length} unknown={0} />
                 </button>
               </li>
             ))}
@@ -47,7 +48,7 @@ export function CallsTab({ agentId }: { agentId: string }) {
           {open && (
             <>
               <SheetHeader className="text-left">
-                <div className="flex items-center gap-2"><Verdict pass={open.passed} /><Tag>{open.kind}</Tag><Tag>v{open.version}</Tag></div>
+                <div className="flex flex-wrap items-center gap-2"><CriteriaBreakdown total={open.results.length} failed={open.results.filter((r) => !r.pass).length} unknown={0} /><Tag>{open.kind}</Tag><Tag>v{open.version}</Tag></div>
                 <SheetTitle className="font-display text-xl">{open.caller}</SheetTitle>
                 <SheetDescription className="font-mono text-xs">{fmtTime(open.at)} · {fmtDur(open.durationSec)} · {open.id}</SheetDescription>
               </SheetHeader>

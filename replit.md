@@ -69,6 +69,7 @@ Keep this positioning in descriptions and design briefs. Preserve the user's sup
 - The public homepage uses the exact supplied copy, logo and purple branding. Agents live at `/agents`; user connection is at `/connect`.
 - Live agents use the Python discovery/import API. Future monitoring tabs must not substitute sample measurements for connected agents.
 - The separate sample workspace persists only in account-namespaced browser state. Clear sensitive state on logout and never adopt legacy global demo data for the first account.
+- `/demo` is a public, frozen real-agent snapshot, separate from the synthetic `/sample` workspace and owner-private APIs. Export only the allowlisted display schema; never connection credentials or owner identity.
 
 ## User preferences
 

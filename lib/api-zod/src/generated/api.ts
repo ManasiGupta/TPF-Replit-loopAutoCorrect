@@ -65,6 +65,7 @@ export const ListAgentsResponseItem = zod.object({
   "platform": zod.string(),
   "createdAt": zod.string(),
   "criteriaCount": zod.int(),
+  "failedCriteriaCount": zod.int().nullable().describe('Distinct criteria with recorded failures on completed production calls; null without measured criterion results'),
   "passRate": zod.number().nullable(),
   "openFailures": zod.int().nullable(),
   "status": zod.string(),
@@ -96,6 +97,7 @@ export const ConnectAgentResponse = zod.object({
   "platform": zod.string(),
   "createdAt": zod.string(),
   "criteriaCount": zod.int(),
+  "failedCriteriaCount": zod.int().nullable().describe('Distinct criteria with recorded failures on completed production calls; null without measured criterion results'),
   "passRate": zod.number().nullable(),
   "openFailures": zod.int().nullable(),
   "status": zod.string(),
@@ -133,6 +135,7 @@ export const GetAgentResponse = zod.object({
   "platform": zod.string(),
   "createdAt": zod.string(),
   "criteriaCount": zod.int(),
+  "failedCriteriaCount": zod.int().nullable().describe('Distinct criteria with recorded failures on completed production calls; null without measured criterion results'),
   "passRate": zod.number().nullable(),
   "openFailures": zod.int().nullable(),
   "status": zod.string(),
@@ -200,6 +203,9 @@ export const ListCallsParams = zod.object({
   "id": zod.uuid()
 })
 
+export const listCallsQueryCategoryDefault = `all`;
+export const listCallsQueryCategoryMax = 1000;
+
 export const listCallsQueryOffsetDefault = 0;
 export const listCallsQueryOffsetMin = 0;
 
@@ -211,6 +217,7 @@ export const listCallsQueryLimitMax = 100;
 export const ListCallsQueryParams = zod.object({
   "result": zod.enum(['all', 'passed', 'failed', 'unknown']).optional(),
   "source": zod.enum(['all', 'production', 'test', 'unknown']).optional(),
+  "category": zod.coerce.string().max(listCallsQueryCategoryMax).default(listCallsQueryCategoryDefault).describe('all, unknown, passed, other-failure, or criterion:<provider criterion ID>. Categories use recorded failures, not inferred diagnoses.'),
   "offset": zod.coerce.number().int().min(listCallsQueryOffsetMin).default(listCallsQueryOffsetDefault),
   "limit": zod.coerce.number().int().min(1).max(listCallsQueryLimitMax).default(listCallsQueryLimitDefault)
 })
@@ -226,7 +233,19 @@ export const ListCallsResponse = zod.object({
   "source": zod.enum(['production', 'test', 'unknown']),
   "versionId": zod.string().nullable(),
   "summary": zod.string().nullable(),
-  "evaluationCount": zod.int()
+  "evaluationCount": zod.int(),
+  "failureReasons": zod.array(zod.object({
+  "criterionId": zod.string(),
+  "name": zod.string(),
+  "result": zod.enum(['success', 'failure', 'unknown']),
+  "rationale": zod.string(),
+  "score": zod.int().nullable(),
+  "maxScore": zod.int().nullable()
+})),
+  "criteriaCount": zod.int().describe('Distinct configured or reported criteria; missing results remain unknown'),
+  "failedCriteriaCount": zod.int(),
+  "passedCriteriaCount": zod.int(),
+  "unknownCriteriaCount": zod.int()
 })),
   "total": zod.int(),
   "offset": zod.int(),
@@ -238,7 +257,12 @@ export const ListCallsResponse = zod.object({
   "lastSuccessAt": zod.string().nullable(),
   "nextPollAt": zod.string().nullable(),
   "lastError": zod.string().nullable()
-})
+}),
+  "categories": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "count": zod.int()
+})).describe('Counts across all saved calls matching source, independent of pagination and result/category filters. Calls may fail more than one criterion.')
 })
 
 
@@ -257,7 +281,19 @@ export const GetCallResponse = zod.object({
   "source": zod.enum(['production', 'test', 'unknown']),
   "versionId": zod.string().nullable(),
   "summary": zod.string().nullable(),
-  "evaluationCount": zod.int()
+  "evaluationCount": zod.int(),
+  "failureReasons": zod.array(zod.object({
+  "criterionId": zod.string(),
+  "name": zod.string(),
+  "result": zod.enum(['success', 'failure', 'unknown']),
+  "rationale": zod.string(),
+  "score": zod.int().nullable(),
+  "maxScore": zod.int().nullable()
+})),
+  "criteriaCount": zod.int().describe('Distinct configured or reported criteria; missing results remain unknown'),
+  "failedCriteriaCount": zod.int(),
+  "passedCriteriaCount": zod.int(),
+  "unknownCriteriaCount": zod.int()
 }).and(zod.object({
   "transcript": zod.array(zod.object({
   "role": zod.string(),

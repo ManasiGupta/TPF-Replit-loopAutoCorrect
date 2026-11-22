@@ -19,8 +19,6 @@ export function VersionsTab({ agentId }: { agentId: string }) {
       <ol className="relative">
         {versions.map((v, i) => {
           const live = v.n === agent.liveVersion;
-          const prev = versions[i + 1];
-          const delta = prev ? v.passRate - prev.passRate : null;
           return (
             <li key={v.n} className="border-b border-border last:border-0" data-testid={`row-version-${v.n}`}>
               <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center">
@@ -33,8 +31,6 @@ export function VersionsTab({ agentId }: { agentId: string }) {
                   <p className="font-mono text-[11px] text-muted-foreground">{fmtDate(v.createdAt)}</p>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="font-display text-lg font-semibold tabular">{v.passRate.toFixed(1)}%</span>
-                  {delta !== null && <span className={cn("w-12 font-mono text-xs tabular", delta >= 0 ? "text-pass" : "text-destructive")}>{delta >= 0 ? "+" : ""}{delta.toFixed(1)}</span>}
                   <Btn variant="ghost" className="h-8" onClick={() => setView(view === v.n ? null : v.n)} data-testid={`button-view-${v.n}`}>Prompt</Btn>
                   <Btn className="h-8" disabled={live} onClick={() => setTarget(v.n)} data-testid={`button-rollback-${v.n}`}><History className="h-3.5 w-3.5" />Roll back</Btn>
                 </div>

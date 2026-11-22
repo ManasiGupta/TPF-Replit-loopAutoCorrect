@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import { Link } from "wouter";
 import { ArrowRight } from "lucide-react";
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useDemo, agentStats } from "@/lib/demo-store";
-import { Panel, Stat, Verdict, fmtDate, fmtTime } from "@/components/loop/ui";
+import { Panel, Stat, fmtTime } from "@/components/loop/ui";
+import { CriteriaBreakdown } from "@/components/loop/criteria-breakdown";
 import type { TabKey } from "@/pages/agent-detail";
 
 export function OverviewTab({ agentId, onTab }: { agentId: string; onTab: (t: TabKey) => void }) {
@@ -11,7 +11,11 @@ export function OverviewTab({ agentId, onTab }: { agentId: string; onTab: (t: Ta
   const agent = state.agents.find((a) => a.id === agentId)!;
   const s = agentStats(state, agentId);
   const versions = useMemo(() => state.versions.filter((v) => v.agentId === agentId).sort((a, b) => a.n - b.n), [state.versions, agentId]);
-  const data = versions.map((v) => ({ name: `v${v.n}`, rate: v.passRate, note: v.note, date: fmtDate(v.createdAt), live: v.n === agent.liveVersion }));
+  const agentCalls = state.calls.filter((c) => c.agentId === agentId);
+  const criteria = state.criteria.filter((c) => c.agentId === agentId).map((cr) => {
+    const rs = agentCalls.flatMap((c) => c.results.filter((r) => r.criterionId === cr.id));
+    return { ...cr, failed: rs.filter((r) => !r.pass).length, passed: rs.filter((r) => r.pass).length };
+  });
   const live = versions.find((v) => v.n === agent.liveVersion);
   const failures = state.failures.filter((f) => f.agentId === agentId && f.status !== "fixed").sort((a, b) => b.callIds.length - a.callIds.length);
   const recent = state.calls.filter((c) => c.agentId === agentId).slice(0, 5);
@@ -20,8 +24,8 @@ export function OverviewTab({ agentId, onTab }: { agentId: string; onTab: (t: Ta
   return (
     <div className="space-y-5">
       <dl className="grid grid-cols-2 overflow-hidden rounded-xl border border-border bg-card lg:grid-cols-4 [&>*]:border-border [&>*:nth-child(2n)]:border-l [&>*:nth-child(n+3)]:border-t lg:[&>*:nth-child(n+2)]:border-l lg:[&>*:nth-child(n+3)]:border-t-0">
-        <Stat label="Pass rate, live" value={`${s.passRate?.toFixed(1)}%`} hint={`v${agent.liveVersion} across ${s.calls} calls`} tone="pass" testId="text-passrate" />
-        <Stat label="Open failures" value={s.open} hint={`${s.openClusters} clusters`} tone="fail" testId="text-failures" />
+        <Stat label="Evaluation criteria" value={s.criteria} hint="Sample criteria for this agent" tone="primary" testId="text-criteria" />
+        <Stat label="Criteria with failures" value={s.failedCriteria} hint={`Across ${s.calls} sample calls`} tone="fail" testId="text-failed-criteria" />
         <Stat label="Fixed failures" value={s.fixed} hint="Resolved by shipped fixes" />
         <Stat label="Live version" value={`v${agent.liveVersion}`} hint={live ? live.note : ""} tone="primary" testId="text-live-version" />
       </dl>
@@ -38,31 +42,13 @@ export function OverviewTab({ agentId, onTab }: { agentId: string; onTab: (t: Ta
       )}
 
       <div className="grid gap-5 lg:grid-cols-[1.6fr_1fr]">
-        <Panel title="Pass rate by version" action={<span className="font-mono text-[10.5px] text-muted-foreground">% of criteria checks passed</span>}>
-          <div className="h-64 px-2 pb-3 pt-4" data-testid="chart-passrate">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={data} margin={{ top: 8, right: 16, bottom: 4, left: -8 }}>
-                <CartesianGrid strokeDasharray="2 4" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="name" tickLine={false} axisLine={{ stroke: "hsl(var(--border))" }} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))", fontFamily: "JetBrains Mono" }} />
-                <YAxis domain={[60, 100]} tickFormatter={(v: number) => `${v}%`} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))", fontFamily: "JetBrains Mono" }} width={48} />
-                <Tooltip
-                  cursor={{ stroke: "hsl(var(--primary))", strokeOpacity: 0.3 }}
-                  content={({ active, payload }) => {
-                    if (!active || !payload?.length) return null;
-                    const p = payload[0].payload as (typeof data)[number];
-                    return (
-                      <div className="rounded-lg border border-popover-border bg-popover px-3 py-2 text-xs shadow-md">
-                        <p className="font-mono text-muted-foreground">{p.name} · {p.date}{p.live ? " · live" : ""}</p>
-                        <p className="mt-0.5 font-display text-base font-semibold">{p.rate.toFixed(1)}%</p>
-                        <p className="text-muted-foreground">{p.note}</p>
-                      </div>
-                    );
-                  }}
-                />
-                <Line type="monotone" dataKey="rate" stroke="hsl(var(--primary))" strokeWidth={2.2} dot={{ r: 3.5, fill: "hsl(var(--card))", strokeWidth: 2 }} activeDot={{ r: 5 }} animationDuration={700} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+        <Panel title="Results by criterion" action={<span className="font-mono text-[10.5px] text-muted-foreground">sample calls</span>}>
+          <ul className="divide-y divide-border" data-testid="list-criterion-results">
+            {criteria.map((cr) => <li key={cr.id} className="flex items-start gap-3 px-4 py-3">
+              <p className="min-w-0 flex-1 text-sm leading-relaxed">{cr.text}</p>
+              <span className="shrink-0 font-mono text-[11px] tabular text-muted-foreground"><span className={cr.failed ? "text-destructive" : ""}>{cr.failed} failed</span> · {cr.passed} passed</span>
+            </li>)}
+          </ul>
         </Panel>
 
         <Panel title="Top open failures" action={<button onClick={() => onTab("failures")} className="text-xs text-primary hover:underline" data-testid="button-view-failures">View all</button>}>
@@ -89,7 +75,7 @@ export function OverviewTab({ agentId, onTab }: { agentId: string; onTab: (t: Ta
               <span className="font-mono text-xs text-muted-foreground">{fmtTime(c.at)}</span>
               <span className="hidden truncate sm:block">{c.caller}</span>
               <span className="hidden font-mono text-[11px] text-muted-foreground sm:block">{c.kind}</span>
-              <Verdict pass={c.passed} />
+              <CriteriaBreakdown total={c.results.length} failed={c.results.filter((r) => !r.pass).length} unknown={0} />
             </li>
           ))}
         </ul>

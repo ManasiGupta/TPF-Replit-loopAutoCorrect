@@ -21,6 +21,7 @@ export default function AgentsPage() {
         <p className="mt-2 text-sm text-[#77758A]">Real ElevenLabs connections saved to your account.</p>
       </div>
       <div className="flex flex-wrap gap-2">
+        <Link href="/demo" data-testid="link-agents-demo" className="inline-flex h-10 items-center rounded-full border border-[#DCD8EF] px-4 text-sm font-semibold text-[#5B4BFF] hover:bg-[#F5F3FF]">View real sample</Link>
         <Link href="/connect" data-testid="link-connect-agent" className="inline-flex h-10 items-center gap-2 rounded-full bg-[#5B4BFF] px-5 text-sm font-semibold text-white shadow-[0_10px_25px_-14px_rgba(91,75,255,.8)] transition-transform hover:-translate-y-0.5">Connect agent <ArrowRight className="h-4 w-4" /></Link>
       </div>
     </div>
@@ -58,8 +59,8 @@ export default function AgentsPage() {
             </div>
             <div className="flex items-center justify-between gap-6 border-t border-[#F0EEF5] pt-3 sm:border-0 sm:pt-0">
               <div className="flex gap-6">
-                <div><p className="font-mono text-[9px] uppercase tracking-[.14em] text-[#9693A4]">Pass rate</p><p className="mt-1 text-sm font-semibold tabular">{agent.passRate == null ? <span className="font-normal text-[#858295]">Not measured</span> : `${agent.passRate.toFixed(1)}%`}</p></div>
-                <div><p className="font-mono text-[9px] uppercase tracking-[.14em] text-[#9693A4]">Failed calls</p><p className="mt-1 text-sm font-semibold tabular">{agent.openFailures == null ? <span className="font-normal text-[#858295]">Not measured</span> : agent.openFailures}</p></div>
+                <div><p className="font-mono text-[9px] uppercase tracking-[.14em] text-[#9693A4]">Evaluation criteria</p><p className="mt-1 text-sm font-semibold tabular" data-testid={`text-criteria-${agent.id}`}>{agent.criteriaCount}</p></div>
+                <div><p className="font-mono text-[9px] uppercase tracking-[.14em] text-[#9693A4]">Criteria with failures</p><p className="mt-1 text-sm font-semibold tabular" data-testid={`text-failed-criteria-${agent.id}`}>{agent.failedCriteriaCount == null ? <span className="font-normal text-[#858295]">Not measured</span> : agent.failedCriteriaCount}</p></div>
               </div>
               <ArrowRight className="h-4 w-4 text-[#858295] transition-transform group-hover:translate-x-1 group-hover:text-[#5B4BFF]" />
             </div>

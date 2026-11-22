@@ -14,6 +14,7 @@ import { ConnectedCallsTab, ConnectedSettingsTab, MonitoringLine } from "@/compo
 import { getGetAgentQueryKey, useGetAgent } from "@workspace/api-client-react";
 import type { AgentDetail } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AgentPreviewLink } from "@/components/loop/agent-preview-link";
 
 const TABS = ["overview", "calls", "failures", "evals", "fixes", "versions", "settings"] as const;
 export type TabKey = (typeof TABS)[number];
@@ -109,6 +110,7 @@ function ConnectedAgentDetail({ agent, backHref, tab, onTab }: { agent: AgentDet
         <div className="mt-2 flex flex-wrap items-center gap-3"><span className="truncate font-mono text-xs text-[#77758A]">{agent.remoteId}</span><MonitoringLine m={agent.monitoring} /></div>
       </div>
     </div>
+    <div className="mb-5"><AgentPreviewLink remoteId={agent.remoteId} frozen={false} /></div>
     <nav className="sticky top-[6.5rem] z-30 -mx-4 mb-6 overflow-x-auto border-b border-border bg-background/90 px-4 backdrop-blur sm:-mx-6 sm:px-6">
       <div className="flex gap-1">
         {CTABS.map((t) => <button key={t} type="button" onClick={() => onTab(t)} data-testid={`tab-${t}`} className={cn("relative whitespace-nowrap px-3 py-3 text-sm capitalize transition-colors", tab === t ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
@@ -130,10 +132,9 @@ function ConnectedOverview({ agent }: { agent: AgentDetail }) {
   const user = agent.criteria.filter((criterion) => criterion.source === "user");
   return <div>
     {agent.warning && <p className="mb-5 rounded-xl border border-[#EADFC3] bg-[#FFFCF5] px-4 py-3 text-sm leading-relaxed text-[#735C25]">{agent.warning}</p>}
-    <div className="mb-6 grid gap-3 sm:grid-cols-3">
-      <div className="rounded-xl border border-[#E7E4F0] bg-white p-4"><p className="font-mono text-[10px] uppercase tracking-[.13em] text-[#8B889A]">Pass rate</p><p className="mt-2 font-display text-xl font-semibold">{agent.passRate == null ? "Not measured" : `${agent.passRate.toFixed(1)}%`}</p></div>
-      <div className="rounded-xl border border-[#E7E4F0] bg-white p-4"><p className="font-mono text-[10px] uppercase tracking-[.13em] text-[#8B889A]">Failed calls</p><p className="mt-2 font-display text-xl font-semibold">{agent.openFailures == null ? "Not measured" : agent.openFailures}</p></div>
-      <div className="rounded-xl border border-[#E7E4F0] bg-white p-4"><p className="font-mono text-[10px] uppercase tracking-[.13em] text-[#8B889A]">Saved criteria</p><p className="mt-2 font-display text-xl font-semibold">{agent.criteriaCount}</p></div>
+    <div className="mb-6 grid gap-3 sm:grid-cols-2">
+      <div className="rounded-xl border border-[#E7E4F0] bg-white p-4"><p className="font-mono text-[10px] uppercase tracking-[.13em] text-[#8B889A]">Evaluation criteria</p><p className="mt-2 font-display text-xl font-semibold" data-testid="text-overview-criteria">{agent.criteriaCount}</p><p className="mt-1 text-xs text-[#858295]">Configured for this agent</p></div>
+      <div className="rounded-xl border border-[#E7E4F0] bg-white p-4"><p className="font-mono text-[10px] uppercase tracking-[.13em] text-[#8B889A]">Criteria with failures</p><p className="mt-2 font-display text-xl font-semibold" data-testid="text-overview-failed-criteria">{agent.failedCriteriaCount == null ? "Not measured" : agent.failedCriteriaCount}</p><p className="mt-1 text-xs text-[#858295]">{agent.failedCriteriaCount == null ? "No measured criterion results yet" : "Distinct criteria failed in at least one completed production call"}</p></div>
     </div>
     <div className="mb-6 rounded-2xl border border-[#E7E4F0] bg-white p-5 sm:p-6">
       <div className="flex items-center justify-between gap-4"><div><p className="font-mono text-[10px] uppercase tracking-[.16em] text-[#8B889A]">Credential</p><h2 className="mt-1 font-display text-xl font-semibold">Stored securely</h2></div><span className="rounded-lg bg-[#F5F4FA] px-3 py-2 font-mono text-sm text-[#575467]" data-testid="text-key-masked">{agent.keyMasked}</span></div>

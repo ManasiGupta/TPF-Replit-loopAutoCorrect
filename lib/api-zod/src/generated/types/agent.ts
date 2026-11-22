@@ -13,6 +13,11 @@ export interface Agent {
   platform: string;
   createdAt: string;
   criteriaCount: number;
+  /**
+     * Distinct criteria with recorded failures on completed production calls; null without measured criterion results
+     * @nullable
+     */
+  failedCriteriaCount: number | null;
   /** @nullable */
   passRate: number | null;
   /** @nullable */

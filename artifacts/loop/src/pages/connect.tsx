@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ArrowLeft, Check, ChevronDown, CircleAlert, KeyRound, Loader2, LockKeyhole, Plus, RefreshCw, ShieldCheck, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, ChevronDown, CircleAlert, KeyRound, Loader2, LockKeyhole, Plus, RefreshCw, ShieldCheck, X } from "lucide-react";
 import { discoverAgents, previewAgent, connectAgent, useGetSetup, getListAgentsQueryKey, getGetAgentQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { AgentPreview, RemoteAgent } from "@workspace/api-client-react";
@@ -42,6 +42,7 @@ export default function ConnectPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [keyVisible, setKeyVisible] = useState(false);
+  const [manualId, setManualId] = useState("");
   const requestVersion = useRef(0);
   const busy = useRef(false);
 
@@ -64,7 +65,19 @@ export default function ConnectPage() {
     setPreviewing(false);
     setPreview(null);
     setRemoteId("");
+    setManualId("");
     setCriteria([]);
+    setError("");
+  };
+  const manualTrim = manualId.trim();
+  const validManualId = manualTrim.length <= 200 && /^[A-Za-z0-9_-]+$/.test(manualTrim);
+  const canManual = validKey && validManualId && !discovering && !previewing && !saving;
+  const onManualChange = (value: string) => {
+    setManualId(value);
+    setRemoteId("");
+    setPreview(null);
+    setCriteria([]);
+    setDraft("");
     setError("");
   };
 
@@ -157,6 +170,7 @@ export default function ConnectPage() {
       <p className="mb-2 font-mono text-[10px] uppercase tracking-[.2em] text-[#5B4BFF]">ElevenLabs · secure connection</p>
       <h1 className="font-display text-4xl font-semibold tracking-[-.035em] sm:text-5xl">Connect your agent</h1>
       <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-[#706E81]">Bring an existing production agent into Loop. We read its current configuration and criteria; no prompt changes are made here.</p>
+      <Link href="/demo" data-testid="link-try-sample" className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[#5B4BFF] hover:underline">No key yet? Try the sample agent <ArrowRight className="h-3.5 w-3.5" /></Link>
     </div>
     <div className="mb-8 grid gap-3 sm:grid-cols-3">
       {[
@@ -187,7 +201,7 @@ export default function ConnectPage() {
         </div>
       </Stage>
 
-      <Stage number={2} title="Select an existing agent" active={agents.length > 0 || discovering} complete={!!preview}>
+      <Stage number={2} title="Select an existing agent" active={validKey || discovering} complete={!!preview}>
         {discovering ? <div className="space-y-2"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-4/5" /></div> : agents.length ? <div className="relative">
           <select value={remoteId} disabled={previewing || saving} onChange={(event) => chooseAgent(event.target.value)} data-testid="select-agent" className="h-12 w-full appearance-none rounded-lg border border-[#E1DEEC] bg-[#FDFDFF] px-4 pr-10 text-sm outline-none focus:border-[#9388FF] focus:ring-4 focus:ring-[#5B4BFF]/10 disabled:opacity-60">
             <option value="">Choose an ElevenLabs agent</option>
@@ -195,6 +209,15 @@ export default function ConnectPage() {
           </select><ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#78758B]" />
           {selectedAgent && <p className="mt-2 text-xs text-[#7A778A]">Agent ID <span className="font-mono text-[#4A485B]">{selectedAgent.remoteId}</span>{selectedAgent.tags.length > 0 && <span> · {selectedAgent.tags.join(", ")}</span>}</p>}
         </div> : <p className="rounded-xl border border-dashed border-[#DEDCE9] px-4 py-5 text-sm text-[#8A879A]">Your available agents will appear after you verify your API key.</p>}
+        <div className="mt-4">
+          <label htmlFor="manual-agent-id" className="mb-2 block text-xs font-semibold text-[#4A485B]">Or enter an agent ID directly</label>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input id="manual-agent-id" autoComplete="off" spellCheck={false} value={manualId} disabled={saving || discovering || previewing} maxLength={200} onChange={(event) => onManualChange(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && canManual) { event.preventDefault(); void chooseAgent(manualTrim); } }} placeholder="Your ElevenLabs agent ID" data-testid="input-agent-id" className="h-11 min-w-0 flex-1 rounded-lg border border-[#E1DEEC] bg-white px-3 font-mono text-sm outline-none placeholder:font-sans placeholder:text-[#AAA7B8] focus:border-[#9388FF] focus:ring-4 focus:ring-[#5B4BFF]/10 disabled:opacity-60" />
+            <button type="button" disabled={!canManual} onClick={() => chooseAgent(manualTrim)} data-testid="button-preview-agent-id" className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full border border-[#DCD8EF] px-5 text-sm font-semibold text-[#5B4BFF] hover:bg-[#F5F3FF] disabled:cursor-not-allowed disabled:opacity-40">{previewing && remoteId === manualTrim ? <Loader2 className="h-4 w-4 animate-spin" /> : null}Preview agent</button>
+          </div>
+          {!validKey && <p className="mt-2 text-xs text-[#8A879A]">Add your API key first. Previewing uses your own key.</p>}
+          {manualTrim && !validManualId && <p className="mt-2 text-xs text-destructive" role="alert">Use an agent ID containing only letters, numbers, underscores, or hyphens.</p>}
+        </div>
       </Stage>
 
       <Stage number={3} title="Review success criteria" active={!!remoteId} complete={ready}>

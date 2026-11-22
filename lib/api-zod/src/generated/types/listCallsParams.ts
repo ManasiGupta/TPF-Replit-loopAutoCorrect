@@ -12,6 +12,11 @@ export type ListCallsParams = {
 result?: ListCallsResult;
 source?: ListCallsSource;
 /**
+ * all, unknown, passed, other-failure, or criterion:<provider criterion ID>. Categories use recorded failures, not inferred diagnoses.
+ * @maxLength 1000
+ */
+category?: string;
+/**
  * @minimum 0
  */
 offset?: number;

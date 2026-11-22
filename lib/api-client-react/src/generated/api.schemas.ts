@@ -45,28 +45,6 @@ export const CallSummarySource = {
   unknown: 'unknown',
 } as const;
 
-export interface CallSummary {
-  id: string;
-  conversationId: string;
-  startedAt: string;
-  durationSecs: number;
-  status: string;
-  result: CallSummaryResult;
-  source: CallSummarySource;
-  /** @nullable */
-  versionId: string | null;
-  /** @nullable */
-  summary: string | null;
-  evaluationCount: number;
-}
-
-export interface TranscriptTurn {
-  role: string;
-  /** @nullable */
-  text: string | null;
-  timeInCallSecs: number;
-}
-
 export type CallEvaluationResult = typeof CallEvaluationResult[keyof typeof CallEvaluationResult];
 
 
@@ -87,6 +65,34 @@ export interface CallEvaluation {
   maxScore: number | null;
 }
 
+export interface CallSummary {
+  id: string;
+  conversationId: string;
+  startedAt: string;
+  durationSecs: number;
+  status: string;
+  result: CallSummaryResult;
+  source: CallSummarySource;
+  /** @nullable */
+  versionId: string | null;
+  /** @nullable */
+  summary: string | null;
+  evaluationCount: number;
+  failureReasons: CallEvaluation[];
+  /** Distinct configured or reported criteria; missing results remain unknown */
+  criteriaCount: number;
+  failedCriteriaCount: number;
+  passedCriteriaCount: number;
+  unknownCriteriaCount: number;
+}
+
+export interface TranscriptTurn {
+  role: string;
+  /** @nullable */
+  text: string | null;
+  timeInCallSecs: number;
+}
+
 export type CallDetail = CallSummary & ({
   transcript: TranscriptTurn[];
   evaluations: CallEvaluation[];
@@ -94,12 +100,20 @@ export type CallDetail = CallSummary & ({
   environment: string | null;
 });
 
+export interface CallCategory {
+  id: string;
+  name: string;
+  count: number;
+}
+
 export interface CallPage {
   items: CallSummary[];
   total: number;
   offset: number;
   limit: number;
   monitoring: Monitoring;
+  /** Counts across all saved calls matching source, independent of pagination and result/category filters. Calls may fail more than one criterion. */
+  categories: CallCategory[];
 }
 
 export interface Setup {
@@ -188,6 +202,11 @@ export interface Agent {
   platform: string;
   createdAt: string;
   criteriaCount: number;
+  /**
+     * Distinct criteria with recorded failures on completed production calls; null without measured criterion results
+     * @nullable
+     */
+  failedCriteriaCount: number | null;
   /** @nullable */
   passRate: number | null;
   /** @nullable */
@@ -210,6 +229,11 @@ export interface HealthStatus {
 export type ListCallsParams = {
 result?: ListCallsResult;
 source?: ListCallsSource;
+/**
+ * all, unknown, passed, other-failure, or criterion:<provider criterion ID>. Categories use recorded failures, not inferred diagnoses.
+ * @maxLength 1000
+ */
+category?: string;
 /**
  * @minimum 0
  */

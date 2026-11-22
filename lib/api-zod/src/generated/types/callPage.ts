@@ -5,6 +5,7 @@
  * Private agent connections. All operations except health require a verified Clerk session cookie; saved agents and criteria are scoped to the authenticated owner.
  * OpenAPI spec version: 0.1.0
  */
+import type { CallCategory } from './callCategory';
 import type { CallSummary } from './callSummary';
 import type { Monitoring } from './monitoring';
 
@@ -14,4 +15,6 @@ export interface CallPage {
   offset: number;
   limit: number;
   monitoring: Monitoring;
+  /** Counts across all saved calls matching source, independent of pagination and result/category filters. Calls may fail more than one criterion. */
+  categories: CallCategory[];
 }

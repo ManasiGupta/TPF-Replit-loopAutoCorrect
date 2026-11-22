@@ -4,3 +4,5 @@
 - [Navigation and brand](navigation-and-brand.md) — Home, Connect, and the workspace must feel consistent; distinguish all agents from one selected agent.
 - [Initial happy-path scope](initial-scope.md) — prioritize the happy path; do not implement agent disconnection unless the user reopens that scope.
 - [Provider test provenance](provider-test-provenance.md) — an ElevenLabs environment label is not proof that a test suite ran; shipping needs actual run evidence.
+- [Original-content demo approval](demo-sharing.md) — user chose an original connected-agent snapshot for visitors, not anonymized or configuration-only content.
+- [Criterion-level metric policy](criterion-metric-policy.md) — show criteria and per-call failures, not overall binary pass rates or failed-call headline totals.

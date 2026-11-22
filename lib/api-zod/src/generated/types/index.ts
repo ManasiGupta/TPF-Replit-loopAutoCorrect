@@ -10,6 +10,7 @@ export * from './agent';
 export * from './agentDetail';
 export * from './agentPreview';
 export * from './agentSelection';
+export * from './callCategory';
 export * from './callDetail';
 export * from './callEvaluation';
 export * from './callEvaluationResult';
