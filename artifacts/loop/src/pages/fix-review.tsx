@@ -50,7 +50,13 @@ export default function FixReviewPage() {
 
   return (
     <div>
-      <Link href={`/agents/${id}?tab=fixes`} data-testid="link-back" className="mb-5 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> {agent.org} / {agent.name}</Link>
+      <nav aria-label="Breadcrumb" className="mb-5 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+        <Link href="/agents" className="hover:text-foreground">All agents</Link>
+        <span aria-hidden className="text-muted-foreground/50">/</span>
+        <Link href={`/agents/${id}?tab=fixes`} data-testid="link-back" className="inline-flex items-center gap-1.5 hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" />{agent.org} / {agent.name} · Fixes</Link>
+        <span aria-hidden className="text-muted-foreground/50">/</span>
+        <span aria-current="page" className="text-foreground">Fix review</span>
+      </nav>
       <div className="rise mb-6 flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           <Eyebrow className="mb-1">Fix review · v{fix.baseVersion} to candidate</Eyebrow>

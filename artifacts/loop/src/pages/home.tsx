@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Link } from "wouter";
-import { ArrowRight, Eye, ScanSearch, Wrench, ShieldCheck, Rocket, KeyRound, ClipboardPaste, MousePointerClick, Github } from "lucide-react";
+import { ArrowRight, Eye, ScanSearch, Wrench, ShieldCheck, Rocket, KeyRound, ClipboardPaste, MousePointerClick, Github, Home } from "lucide-react";
 import { LoopLogo, LoopMark } from "@/components/loop/mark";
 
 const HEADLINE = "Your voice agent, better every week.";
@@ -44,14 +44,19 @@ export default function HomePage() {
     <div className="home min-h-[100dvh] overflow-x-hidden bg-[#FDFDFF] text-[#1A1A2E]" style={{ colorScheme: "light" }}>
       <a href="#main" className={`sr-only z-50 rounded-md bg-[#5B4BFF] px-3 py-2 text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4 ${focus}`}>Skip to content</a>
       <header className="sticky top-0 z-40 border-b border-[#1A1A2E]/[.06] bg-[#FDFDFF]/85 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-5 sm:px-8">
+        <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-4 sm:gap-6 sm:px-8">
           <Link href="/" aria-label="loop home" data-testid="link-home" className={`rounded-md ${focus}`}><LoopLogo textClassName="text-xl" /></Link>
-          <nav aria-label="Sections" className="ml-auto hidden items-center gap-1 text-sm text-[#1A1A2E]/60 md:flex">
+          <nav aria-label="Main navigation" className="ml-auto flex items-center gap-0.5 text-xs text-[#1A1A2E]/60 sm:gap-1 sm:text-sm">
+            <Link href="/" aria-label="Home" data-testid="link-nav-home" className={`inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-[#5B4BFF] ${focus}`}><Home className="h-3.5 w-3.5 sm:hidden" /><span className="hidden sm:inline">Home</span></Link>
+            <Link href="/agents" data-testid="link-nav-agents" className={`whitespace-nowrap rounded-md px-2 py-1.5 transition-colors hover:text-[#1A1A2E] ${focus}`}>All agents</Link>
+            <span aria-hidden className="mx-1 h-4 w-px bg-[#1A1A2E]/10" />
+            <span className="hidden items-center gap-1 lg:inline-flex">
             <a href="#how" data-testid="link-nav-how" className={`rounded-md px-3 py-1.5 transition-colors hover:text-[#1A1A2E] ${focus}`}>How it works</a>
             <a href="#connect" data-testid="link-nav-connect" className={`rounded-md px-3 py-1.5 transition-colors hover:text-[#1A1A2E] ${focus}`}>Connect in 2 minutes</a>
             <a href="#promise" data-testid="link-nav-promise" className={`rounded-md px-3 py-1.5 transition-colors hover:text-[#1A1A2E] ${focus}`}>Our promise</a>
+            </span>
           </nav>
-          <Link href="/connect" data-testid="link-connect-header" className={`ml-auto inline-flex h-9 items-center rounded-full bg-[#1A1A2E] px-4 text-sm font-medium text-white transition-transform active:scale-[.97] md:ml-2 ${focus}`}>Connect your agent</Link>
+          <Link href="/connect" data-testid="link-connect-header" className={`ml-auto inline-flex h-9 shrink-0 items-center rounded-full bg-[#5B4BFF] px-3 text-xs font-medium text-white transition-transform active:scale-[.97] sm:px-4 sm:text-sm ${focus}`}><span className="sm:hidden">Connect</span><span className="hidden sm:inline">Connect your agent</span></Link>
         </div>
       </header>
 

@@ -1,3 +1,4 @@
 - [GitHub access paths](github-access.md) — unavailable connector API access does not necessarily mean Git push access is unavailable.
 - [Private Google sign-in](access-control.md) — Connect requires Google login/sign-up before users attach their existing ElevenLabs agents.
 - [Nebius prompt policy](nebius-prompt-policy.md) — keep the user's three system prompts verbatim; require JSON output and validation before saving.
+- [Navigation and brand](navigation-and-brand.md) — Home, Connect, and the workspace must feel consistent; distinguish all agents from one selected agent.

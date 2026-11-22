@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
-import { ArrowRight, Search, X, Plug } from "lucide-react";
+import { ArrowRight, Search, X, Plug, Plus } from "lucide-react";
 import { useDemo, agentStats } from "@/lib/demo-store";
 import { Empty, Eyebrow, Stat, ago } from "@/components/loop/ui";
 import { cn } from "@/lib/utils";
@@ -46,13 +46,18 @@ export default function AgentsPage() {
       <div className="rise mb-7 flex flex-wrap items-end justify-between gap-4">
         <div>
           <Eyebrow className="mb-1">Workspace</Eyebrow>
-          <h1 className="font-display text-4xl font-semibold">Agents</h1>
+          <h1 className="font-display text-4xl font-semibold">All agents</h1>
           <p className="mt-1.5 text-sm text-muted-foreground">Where each voice agent is failing, and what is waiting on you.</p>
         </div>
-        <div className="relative w-full sm:w-72">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, org, or agent ID" data-testid="input-search" className="h-9 w-full rounded-md border border-input bg-card pl-9 pr-8 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/30" />
-          {search && <button onClick={() => setSearch("")} aria-label="Clear search" data-testid="button-clear-search" className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>}
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+          <div className="relative w-full sm:w-72">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, org, or agent ID" data-testid="input-search" className="h-9 w-full rounded-md border border-input bg-card pl-9 pr-8 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/30" />
+            {search && <button onClick={() => setSearch("")} aria-label="Clear search" data-testid="button-clear-search" className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>}
+          </div>
+          <Link href="/connect" data-testid="link-connect-another" className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full bg-primary px-3.5 text-sm font-medium text-primary-foreground transition-transform active:scale-[.97]">
+            <Plus className="h-4 w-4" />Connect agent
+          </Link>
         </div>
       </div>
 

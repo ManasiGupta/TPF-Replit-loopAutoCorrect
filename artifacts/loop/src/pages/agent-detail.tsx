@@ -38,7 +38,7 @@ export default function AgentDetailPage() {
 
   return (
     <div>
-      <Link href="/agents" data-testid="link-back" className="mb-5 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> Agents</Link>
+      <Link href="/agents" data-testid="link-back" className="mb-5 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> All agents</Link>
       <div className="rise mb-6 flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           <Eyebrow className="mb-1">{agent.org}</Eyebrow>
@@ -54,7 +54,7 @@ export default function AgentDetailPage() {
         </div>
       </div>
 
-      <nav className="sticky top-14 z-30 -mx-4 mb-6 overflow-x-auto border-b border-border bg-background/85 px-4 backdrop-blur sm:-mx-6 sm:px-6">
+      <nav className="sticky top-[6.5rem] z-30 -mx-4 mb-6 overflow-x-auto border-b border-border bg-background/90 px-4 backdrop-blur sm:-mx-6 sm:px-6">
         <div className="flex gap-1">
           {TABS.map((t) => (
             <button key={t} onClick={() => go(t)} data-testid={`tab-${t}`} className={cn("relative whitespace-nowrap px-3 py-3 text-sm capitalize transition-colors", tab === t ? "text-foreground" : "text-muted-foreground hover:text-foreground")}>
