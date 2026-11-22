@@ -22,3 +22,8 @@ timeoutMs = 20000
 [nix]
 channel = "stable-25_05"
 packages = ["cargo", "libiconv", "libxcrypt", "openssl", "pkg-config", "postgresql", "rustc"]
+
+[userenv]
+
+[userenv.shared]
+NEBIUS_MODEL = "deepseek-ai/DeepSeek-V4.1-Flash-1017"
