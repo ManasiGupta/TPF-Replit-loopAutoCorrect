@@ -28,7 +28,7 @@ export default function AgentDetailPage() {
     return (
       <div className="mx-auto max-w-xl rounded-xl border border-border bg-card" data-testid="status-detail-error">
         <Empty icon={SearchX} title="Agent not found" body="It may have been removed when the demo data was reset.">
-          <Link href="/" className="text-sm font-medium text-primary hover:underline">Back to agents</Link>
+          <Link href="/agents" className="text-sm font-medium text-primary hover:underline">Back to agents</Link>
         </Empty>
       </div>
     );
@@ -38,7 +38,7 @@ export default function AgentDetailPage() {
 
   return (
     <div>
-      <Link href="/" data-testid="link-back" className="mb-5 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> Agents</Link>
+      <Link href="/agents" data-testid="link-back" className="mb-5 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> Agents</Link>
       <div className="rise mb-6 flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           <Eyebrow className="mb-1">{agent.org}</Eyebrow>

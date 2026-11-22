@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { Moon, Sun, Plus, FlaskConical, RotateCcw } from "lucide-react";
-import { LoopMark } from "./mark";
+import { LoopLogo } from "./mark";
 import { useTheme } from "./theme";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useDemo } from "@/lib/demo-store";
@@ -17,11 +17,10 @@ export function Shell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:gap-5 sm:px-6">
           <Link href="/" className="group flex items-center gap-2" data-testid="link-home">
-            <LoopMark className="h-6 w-6 transition-transform duration-500 group-hover:rotate-[120deg]" />
-            <span className="font-display text-lg font-semibold">Loop</span>
+            <LoopLogo />
           </Link>
           <nav className="hidden items-center gap-1 text-sm sm:flex">
-            <Link href="/" data-testid="link-agents" className={`rounded-md px-3 py-1.5 transition-colors ${location === "/" || location.startsWith("/agents") ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Agents</Link>
+            <Link href="/agents" data-testid="link-agents" className={`rounded-md px-3 py-1.5 transition-colors ${location.startsWith("/agents") ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"}`}>Agents</Link>
           </nav>
           <div className="ml-auto flex items-center gap-1.5">
             <Tooltip>

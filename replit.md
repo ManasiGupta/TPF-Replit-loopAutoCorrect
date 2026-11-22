@@ -2,6 +2,24 @@
 
 A single-user tool for improving ElevenLabs voice agents from production failures.
 
+## Product identity
+
+Loop is a self-correcting agent that monitors an existing voice agent in production, identifies issues, generates prompt fixes, and verifies them before approved updates go live. It is **not a voice-agent builder**.
+
+**Why:** The user explicitly corrected this distinction. Existing voice agents are the input to Loop, not something Loop creates.
+
+Keep this positioning in descriptions and design briefs. Preserve the user's supplied homepage copy exactly; do not replace it with builder-oriented language.
+
+## Integration boundaries
+
+- Voice agents are created and deployed in ElevenLabs, outside Loop. The frontend connects an existing voice agent; it does not build or host one.
+- The frontend's connection screen is for the agent provider, currently ElevenLabs. It must not ask visitors to connect Nebius.
+- Nebius Token Factory is Loop's backend analysis engine. Loop's backend sends call transcripts, evaluation results, and prompt context for diagnosis and proposed fixes.
+- The backend orchestrates ElevenLabs and Nebius independently. Nebius is not an intermediary through which the frontend connects to the voice agent.
+- Loop-owned Nebius credentials remain backend-only. A connected agent's ElevenLabs key is submitted to the backend, stored encrypted, and never returned to the browser.
+
+**Why:** The user clarified that Nebius is the backend connection, whereas the person on the frontend connects to their respective voice agent.
+
 ## Current requested scope
 
 - The user changed direction: "Just make the UI for loop."

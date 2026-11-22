@@ -1,0 +1,1 @@
+- [GitHub access paths](github-access.md) — unavailable connector API access does not necessarily mean Git push access is unavailable.

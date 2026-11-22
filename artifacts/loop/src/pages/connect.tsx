@@ -57,7 +57,7 @@ export default function ConnectPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <Link href="/" data-testid="link-back" className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> Agents</Link>
+      <Link href="/agents" data-testid="link-back" className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> Agents</Link>
       <div className="rise mb-6">
         <p className="mb-1 font-mono text-xs uppercase tracking-[.18em] text-primary">New connection</p>
         <h1 className="font-display text-4xl font-semibold">Connect an agent</h1>
