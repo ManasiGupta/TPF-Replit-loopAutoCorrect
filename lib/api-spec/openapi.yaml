@@ -1,0 +1,189 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+paths:
+  /setup:
+    get:
+      operationId: getSetup
+      responses:
+        "200":
+          description: Setup readiness
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Setup" }
+  /connections/discover:
+    post:
+      operationId: discoverAgents
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CredentialInput" }
+      responses:
+        "200":
+          description: Available ElevenLabs agents
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/RemoteAgent" }
+  /connections/preview:
+    post:
+      operationId: previewAgent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AgentSelection" }
+      responses:
+        "200":
+          description: Imported criteria preview, does not save credentials
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AgentPreview" }
+  /agents:
+    get:
+      operationId: listAgents
+      responses:
+        "200":
+          description: Connected agents
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Agent" }
+    post:
+      operationId: connectAgent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConnectionInput" }
+      responses:
+        "201":
+          description: Agent saved with encrypted credentials
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AgentDetail" }
+  /agents/{id}:
+    get:
+      operationId: getAgent
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Connected agent and imported criteria
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AgentDetail" }
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+components:
+  schemas:
+    Setup:
+      type: object
+      required: [databaseReady, encryptionReady, message]
+      properties:
+        databaseReady: { type: boolean }
+        encryptionReady: { type: boolean }
+        message: { type: string }
+    CredentialInput:
+      type: object
+      required: [apiKey]
+      properties:
+        apiKey: { type: string, minLength: 1, maxLength: 1024, writeOnly: true }
+    AgentSelection:
+      type: object
+      required: [apiKey, remoteId]
+      properties:
+        apiKey: { type: string, minLength: 1, maxLength: 1024, writeOnly: true }
+        remoteId: { type: string, minLength: 1, maxLength: 200 }
+    ConnectionInput:
+      type: object
+      required: [apiKey, remoteId, userCriteria]
+      properties:
+        apiKey: { type: string, minLength: 1, maxLength: 1024, writeOnly: true }
+        remoteId: { type: string, minLength: 1, maxLength: 200 }
+        userCriteria:
+          type: array
+          maxItems: 30
+          items: { type: string, minLength: 1, maxLength: 4000 }
+    RemoteAgent:
+      type: object
+      required: [remoteId, name, tags]
+      properties:
+        remoteId: { type: string }
+        name: { type: string }
+        tags: { type: array, items: { type: string } }
+    Criterion:
+      type: object
+      required: [id, name, text, source, passed, failed, unknown]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        text: { type: string }
+        source: { type: string, enum: [imported, user, loop] }
+        passed: { type: integer }
+        failed: { type: integer }
+        unknown: { type: integer }
+    AgentPreview:
+      type: object
+      required: [remoteId, name, criteria, warning]
+      properties:
+        remoteId: { type: string }
+        name: { type: string }
+        criteria: { type: array, items: { $ref: "#/components/schemas/Criterion" } }
+        warning: { type: ["string", "null"] }
+    Agent:
+      type: object
+      required: [id, remoteId, name, platform, createdAt, criteriaCount, passRate, openFailures, status, keyMasked]
+      properties:
+        id: { type: string }
+        remoteId: { type: string }
+        name: { type: string }
+        platform: { type: string }
+        createdAt: { type: string }
+        criteriaCount: { type: integer }
+        passRate: { type: ["number", "null"] }
+        openFailures: { type: ["integer", "null"] }
+        status: { type: string }
+        keyMasked: { type: string }
+    AgentDetail:
+      allOf:
+        - $ref: "#/components/schemas/Agent"
+        - type: object
+          required: [criteria, warning]
+          properties:
+            criteria: { type: array, items: { $ref: "#/components/schemas/Criterion" } }
+            warning: { type: ["string", "null"] }
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
