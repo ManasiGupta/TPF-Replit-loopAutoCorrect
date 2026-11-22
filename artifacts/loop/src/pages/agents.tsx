@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { ArrowRight, CircleAlert, FlaskConical, Plug, RefreshCw, Radio, Search, X } from "lucide-react";
+import { ArrowRight, CircleAlert, Plug, RefreshCw, Radio, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { getListAgentsQueryKey, useListAgents } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,7 +21,6 @@ export default function AgentsPage() {
         <p className="mt-2 text-sm text-[#77758A]">Real ElevenLabs connections saved to your account.</p>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Link href="/sample" data-testid="link-sample-workspace" className="inline-flex h-10 items-center gap-2 rounded-full border border-[#DED9FF] bg-[#F5F3FF] px-4 text-sm font-medium text-[#5B4BFF] transition-colors hover:bg-[#EFECFF]"><FlaskConical className="h-4 w-4" />Explore sample workspace</Link>
         <Link href="/connect" data-testid="link-connect-agent" className="inline-flex h-10 items-center gap-2 rounded-full bg-[#5B4BFF] px-5 text-sm font-semibold text-white shadow-[0_10px_25px_-14px_rgba(91,75,255,.8)] transition-transform hover:-translate-y-0.5">Connect agent <ArrowRight className="h-4 w-4" /></Link>
       </div>
     </div>

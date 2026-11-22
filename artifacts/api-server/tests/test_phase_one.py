@@ -183,3 +183,22 @@ def test_provider_errors_do_not_return_provider_body(monkeypatch, status, expect
         provider.discover("synthetic")
     assert caught.value.status_code == expected
     assert "synthetic-sensitive-marker" not in caught.value.detail
+
+
+def test_connect_imports_pinned_primary_and_preserves_comparisons(client, db, cipher, monkeypatch):
+    from test_analysis_versions import install_sdk, version
+    install_sdk(monkeypatch, primary="old", comparisons=["latest"], pages={
+        None: {"versions": [version("old", "Pinned wording.")], "current_version_id": "current", "has_more": False},
+    })
+    payload = {"apiKey": "synthetic-key", "remoteId": "remote_test", "userCriteria": []}
+    preview = client.post("/api/connections/preview", json={"apiKey": "synthetic-key", "remoteId": "remote_test"})
+    assert preview.status_code == 200, preview.text
+    assert preview.json()["criteria"][0]["text"] == "Pinned wording."
+    saved = client.post("/api/agents", json=payload)
+    assert saved.status_code == 201, saved.text
+    assert saved.json()["criteriaCount"] == 1
+    row = db.get(Agent, saved.json()["id"])
+    assert row.criteria[0].text == "Pinned wording."
+    metadata = row.criteria[0].provider_definition
+    assert metadata["resolved_version_id"] == "old"
+    assert metadata["comparison_versions"][0]["included_in_scoring"] is False

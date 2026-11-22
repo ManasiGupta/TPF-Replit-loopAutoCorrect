@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link, useLocation, useSearch } from "wouter";
-import { Moon, Sun, Plus, FlaskConical, RotateCcw, Home, ChevronDown, LogOut, UserRound } from "lucide-react";
+import { Moon, Sun, Plus, FlaskConical, Radio, RotateCcw, Home, ChevronDown, LogOut, UserRound } from "lucide-react";
 import { LoopLogo } from "./mark";
 import { useTheme } from "./theme";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -19,7 +19,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const path = location.split("?")[0];
   const routeAgentId = path.match(/^\/(?:agents|sample)\/([^/]+)(?:\/fixes\/[^/]+)?$/)?.[1];
-  const sampleContext = path.startsWith("/sample") || (!!routeAgentId && state.agents.some((agent) => agent.id === routeAgentId));
+  const sampleContext = path.startsWith("/sample");
   const agentBase = sampleContext ? "/sample" : "/agents";
   const agentChoices = sampleContext
     ? state.agents.map((agent) => ({ ...agent, label: `${agent.org} / ${agent.name}` }))
@@ -60,12 +60,12 @@ export function Shell({ children }: { children: ReactNode }) {
           <div className="ml-auto flex items-center gap-0.5 sm:gap-1.5">
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="hidden items-center gap-1.5 rounded-full border border-[#DED9FF] bg-[#F5F3FF] px-2.5 py-1 font-mono text-[10.5px] text-[#5B4BFF] sm:flex" data-testid="status-demo">
-                  <FlaskConical className="h-3 w-3" />
+                <span className="hidden items-center gap-1.5 rounded-full border border-[#DED9FF] bg-[#F5F3FF] px-2.5 py-1 font-mono text-[10.5px] text-[#5B4BFF] sm:flex" data-testid={sampleContext ? "status-demo" : "status-workspace"}>
+                  {sampleContext ? <FlaskConical className="h-3 w-3" /> : <Radio className="h-3 w-3" />}
                   <span>{sampleContext ? "Sample workspace" : location === "/connect" ? "New connection" : location.startsWith("/agents/") ? "Connected agent" : "Your agents"}</span>
                 </span>
               </TooltipTrigger>
-              <TooltipContent className="max-w-64">{sampleContext ? "Sample workspace: calls, results, and fixes are synthetic." : location === "/connect" ? "Connect an existing ElevenLabs agent. Nothing changes in ElevenLabs during this flow." : "Your saved ElevenLabs connections are distinct from the sample workspace."}</TooltipContent>
+              <TooltipContent className="max-w-64">{sampleContext ? "Sample workspace: calls, results, and fixes are synthetic." : location === "/connect" ? "Connect an existing ElevenLabs agent. Nothing changes in ElevenLabs during this flow." : "Only your account's connected ElevenLabs agents appear here."}</TooltipContent>
             </Tooltip>
             {sampleContext && <Tooltip>
               <TooltipTrigger asChild>

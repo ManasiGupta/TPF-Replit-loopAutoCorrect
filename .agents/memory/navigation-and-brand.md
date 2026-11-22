@@ -8,3 +8,9 @@ Home and Connect must share their color theme and design patterns. Structure the
 **Why:** The user repeatedly asked for matching UI/UX across Home and Connect, then identified the disconnected visual themes and requested clearer navigation for multiple agents.
 
 **How to apply:** Use the user's existing Loop homepage branding as the reference for related screens. Keep connecting another agent separate from browsing existing agents, and preserve clear selected-agent context when navigating agent-specific pages.
+
+After connection, open that agent's own workspace, not the sample workspace. Show the user's recorded ElevenLabs test conversations as actual call data when the provider exposes them; never substitute synthetic calls.
+
+**Why:** The user wants to run tests in ElevenLabs and see those conversations on their agent's Loop dashboard.
+
+**How to apply:** Keep samples outside connected-agent routes and make the real agent workspace the primary post-connection destination.

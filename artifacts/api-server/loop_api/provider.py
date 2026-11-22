@@ -5,6 +5,7 @@ import httpx
 from elevenlabs import ElevenLabs
 from elevenlabs.core.api_error import ApiError
 from fastapi import HTTPException
+from .analysis_versions import evaluation_versions
 
 
 @contextmanager
@@ -77,14 +78,17 @@ def load_agent(key: str, agent_id: str) -> tuple[str, list[dict]]:
                     criteria.append({"remote_id": match.id, "name": match.name, "text": match.conversation_goal_prompt, "definition": match.model_dump(mode="json", exclude_none=True)})
                     continue
                 item = client.conversational_ai.analysis_items.get(analysis_item_id=ref.analysis_item_id)
-                # Never silently import the wrong definition for a pinned older version.
-                if (ref.version_id and ref.version_id != item.current_version_id) or ref.additional_version_ids:
-                    raise HTTPException(422, "This agent uses pinned historical or multiple criterion versions. Import is blocked rather than importing the wrong evaluation definition.")
-                definition = item.definition
-                if definition.kind != "evaluation":
-                    raise HTTPException(502, "An attached evaluation item has an unexpected type. No connection was saved.")
+                if item.id != ref.analysis_item_id:
+                    raise HTTPException(502, "ElevenLabs returned a different evaluation item than requested.")
+                definition, resolved_id, comparisons = evaluation_versions(client, item, ref)
                 criteria.append({
                     "remote_id": item.id, "name": definition.name, "text": definition.conversation_goal_prompt,
-                    "definition": {"item": definition.model_dump(mode="json", exclude_none=True), "attachment": ref.model_dump(mode="json", exclude_none=True), "current_version_id": item.current_version_id},
+                    "definition": {
+                        "item": definition.model_dump(mode="json", exclude_none=True),
+                        "attachment": ref.model_dump(mode="json", exclude_none=True),
+                        "current_version_id": item.current_version_id,
+                        "resolved_version_id": resolved_id,
+                        "comparison_versions": comparisons,
+                    },
                 })
         return remote.name, criteria

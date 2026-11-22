@@ -16,6 +16,7 @@ from .schemas import AgentDetail, AgentPreview, AgentSelection, AgentSummary, Co
 from .security import encrypt_api_key, get_cipher
 from .auth import authenticate_request, current_owner
 from .clerk_proxy import router as clerk_router
+from .request_validation import CONNECTION_PATHS, connection_validation
 
 logger = logging.getLogger("loop")
 app = FastAPI(title="Loop API", docs_url="/api/docs", openapi_url="/api/openapi.json", redoc_url=None)
@@ -49,6 +50,13 @@ async def http_error(request, error):
 @app.exception_handler(RequestValidationError)
 async def invalid_request(request, error):
     # FastAPI's default error includes the submitted input, including secret values.
+    if request.url.path in CONNECTION_PATHS:
+        message, issues = connection_validation(error.errors())
+        logger.warning(
+            "Connection validation rejected: stage=%s issues=%s",
+            CONNECTION_PATHS[request.url.path], issues,
+        )
+        return JSONResponse({"error": message}, status_code=422)
     return JSONResponse({"error": "Invalid request. Check the API key, agent selection, and criteria."}, status_code=422)
 
 

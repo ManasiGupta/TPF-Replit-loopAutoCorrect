@@ -55,7 +55,7 @@ Nebius's official documentation confirms `https://api.tokenfactory.nebius.com/v1
 - ElevenLabs's default global API region is used. Region-specific residency hosts are documented but are not selectable in this phase.
 - User-added success criteria are stored in Loop only. Phase 1 never changes the original agent or its criteria.
 - Pass rates and failure counts remain unmeasured until later phases; they are not fabricated as zero or 100%.
-- Import explicitly stops for pinned historical/multiple criterion versions or system criteria with no materialized plain-English definition. It does not silently substitute the wrong definition or save a partial import.
+- Evaluation-version import now supports `latest`, explicit historical versions, and non-scoring comparison versions; see `evaluation-version-import.md` for the confirmed endpoint and regression checks. System criteria without a materialized plain-English definition still stop import rather than saving an incorrect definition.
 - Keep the encryption key stable. Replacing it without re-encrypting stored records would make existing encrypted credentials unreadable.
 
 ## Remaining live acceptance check

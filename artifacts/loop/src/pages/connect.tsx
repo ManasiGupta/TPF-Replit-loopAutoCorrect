@@ -1,19 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { ArrowLeft, Check, ChevronDown, CircleAlert, KeyRound, Loader2, LockKeyhole, Plus, RefreshCw, ShieldCheck, X } from "lucide-react";
-import { discoverAgents, previewAgent, connectAgent, useGetSetup } from "@workspace/api-client-react";
+import { discoverAgents, previewAgent, connectAgent, useGetSetup, getListAgentsQueryKey, getGetAgentQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { AgentPreview, RemoteAgent } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { errorMessage } from "@/lib/api-error";
 
 const MAX_CRITERIA = 30;
 const MAX_WARN = 25;
 
 function messageFrom(error: unknown) {
-  if (error && typeof error === "object") {
-    const e = error as { message?: string; response?: { data?: { detail?: string; message?: string } } };
-    return e.response?.data?.detail || e.response?.data?.message || e.message || "Something went wrong. Try again.";
-  }
-  return "Something went wrong. Try again.";
+  return errorMessage(error, "The connection request could not be completed. Check your connection and try again.");
 }
 
 function Stage({ number, title, active, complete, children }: { number: number; title: string; active: boolean; complete?: boolean; children: React.ReactNode }) {
@@ -31,6 +29,7 @@ function Stage({ number, title, active, complete, children }: { number: number; 
 
 export default function ConnectPage() {
   const [, navigate] = useLocation();
+  const queryClient = useQueryClient();
   const setupQuery = useGetSetup({ query: { retry: false } });
   const [apiKey, setApiKey] = useState("");
   const [agents, setAgents] = useState<RemoteAgent[]>([]);
@@ -134,6 +133,8 @@ export default function ConnectPage() {
     try {
       const saved = await connectAgent({ apiKey: apiKey.trim(), remoteId: preview.remoteId, userCriteria: criteria });
       if (requestVersion.current !== token) return;
+      queryClient.setQueryData(getGetAgentQueryKey(saved.id), saved);
+      void queryClient.invalidateQueries({ queryKey: getListAgentsQueryKey() });
       setApiKey("");
       setAgents([]);
       setPreview(null);

@@ -22,9 +22,9 @@ export default function AgentDetailPage() {
   const search = useSearch();
   const [location, navigate] = useLocation();
   const { state } = useDemo();
-  const agent = state.agents.find((a) => a.id === id);
+  const agent = location.startsWith("/sample/") ? state.agents.find((a) => a.id === id) : undefined;
   const remoteQuery = useGetAgent(id, { query: { enabled: !agent, queryKey: getGetAgentQueryKey(id), retry: false } });
-  const sampleRoute = location.startsWith("/sample/") || !!agent;
+  const sampleRoute = location.startsWith("/sample/");
   const backHref = sampleRoute ? "/sample" : "/agents";
   const raw = new URLSearchParams(search).get("tab") as TabKey | null;
   const tab: TabKey = raw && TABS.includes(raw) ? raw : "overview";
