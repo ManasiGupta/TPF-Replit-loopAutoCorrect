@@ -5,26 +5,128 @@
  * Private agent connections. All operations except health require a verified Clerk session cookie; saved agents and criteria are scoped to the authenticated owner.
  * OpenAPI spec version: 0.1.0
  */
-export interface MonitoringInput {
-  enabled: boolean;
-  /**
-     * @minimum 1
-     * @maximum 1440
-     */
-  pollMinutes: number;
+export interface GuardrailTrigger {
+  name: string;
+  type: string;
+  turnIndex: number;
 }
 
-export interface Monitoring {
-  enabled: boolean;
-  pollMinutes: number;
+export type ImpactMappingImpact = typeof ImpactMappingImpact[keyof typeof ImpactMappingImpact];
+
+
+export const ImpactMappingImpact = {
+  Margin: 'Margin',
+  Trust: 'Trust',
+  Returns: 'Returns',
+  Conversion: 'Conversion',
+  Experience: 'Experience',
+} as const;
+
+export interface ImpactMapping {
+  criterionId: string;
+  name: string;
+  impact: ImpactMappingImpact;
+}
+
+export interface ImpactMappingsInput {
+  mappings: ImpactMapping[];
+}
+
+export type DashboardMetricUnit = typeof DashboardMetricUnit[keyof typeof DashboardMetricUnit];
+
+
+export const DashboardMetricUnit = {
+  count: 'count',
+  score: 'score',
+  percent: 'percent',
+} as const;
+
+export interface DashboardMetric {
+  key: string;
+  label: string;
   /** @nullable */
-  lastAttemptAt: string | null;
+  value: number | null;
   /** @nullable */
-  lastSuccessAt: string | null;
+  baseline: number | null;
   /** @nullable */
-  nextPollAt: string | null;
+  delta: number | null;
+  unit: DashboardMetricUnit;
+  note: string;
+}
+
+export interface DashboardPoint {
+  at: string;
   /** @nullable */
-  lastError: string | null;
+  score: number | null;
+  calls: number;
+  errorCalls: number;
+}
+
+export interface HeatmapCell {
+  at: string;
+  /** @nullable */
+  passRate: number | null;
+  passed: number;
+  failed: number;
+  unknown: number;
+  callIds: string[];
+}
+
+export interface HeatmapRow {
+  criterionId: string;
+  name: string;
+  cells: HeatmapCell[];
+}
+
+export interface DashboardImpact {
+  impact: string;
+  failedCalls: number;
+  callIds: string[];
+}
+
+export type DashboardIncidentState = typeof DashboardIncidentState[keyof typeof DashboardIncidentState];
+
+
+export const DashboardIncidentState = {
+  open: 'open',
+  resolved: 'resolved',
+} as const;
+
+export interface DashboardIncident {
+  id: string;
+  title: string;
+  kind: string;
+  state: DashboardIncidentState;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  detail: string;
+  callIds: string[];
+}
+
+export interface DashboardAlert {
+  id: string;
+  title: string;
+  detail: string;
+  incidentId: string;
+  callIds: string[];
+}
+
+export type VersionMarkerPublisher = typeof VersionMarkerPublisher[keyof typeof VersionMarkerPublisher];
+
+
+export const VersionMarkerPublisher = {
+  Loop: 'Loop',
+  Person: 'Person',
+  Unknown: 'Unknown',
+} as const;
+
+export interface VersionMarker {
+  id: string;
+  at: string;
+  /** @nullable */
+  version: string | null;
+  publisher: VersionMarkerPublisher;
+  evidence: string;
 }
 
 export type CallSummaryResult = typeof CallSummaryResult[keyof typeof CallSummaryResult];
@@ -65,6 +167,16 @@ export interface CallEvaluation {
   maxScore: number | null;
 }
 
+export type CallSummaryOutcome = typeof CallSummaryOutcome[keyof typeof CallSummaryOutcome];
+
+
+export const CallSummaryOutcome = {
+  error: 'error',
+  analyzing: 'analyzing',
+  scored: 'scored',
+  unknown: 'unknown',
+} as const;
+
 export interface CallSummary {
   id: string;
   conversationId: string;
@@ -79,11 +191,65 @@ export interface CallSummary {
   summary: string | null;
   evaluationCount: number;
   failureReasons: CallEvaluation[];
+  title?: string;
+  messageCount?: number;
+  /** @nullable */
+  language?: string | null;
+  /** @nullable */
+  score?: number | null;
+  outcome?: CallSummaryOutcome;
+  errorReasons?: string[];
+  failedTurnIndexes?: number[];
+  guardrails?: GuardrailTrigger[];
   /** Distinct configured or reported criteria; missing results remain unknown */
   criteriaCount: number;
   failedCriteriaCount: number;
   passedCriteriaCount: number;
   unknownCriteriaCount: number;
+}
+
+export interface Monitoring {
+  enabled: boolean;
+  pollMinutes: number;
+  /** @nullable */
+  lastAttemptAt: string | null;
+  /** @nullable */
+  lastSuccessAt: string | null;
+  /** @nullable */
+  nextPollAt: string | null;
+  /** @nullable */
+  lastError: string | null;
+}
+
+export interface MonitoringDashboard {
+  generatedAt: string;
+  timezone: string;
+  bucket: string;
+  periodStart: string;
+  periodEnd: string;
+  totalCalls: number;
+  metrics: DashboardMetric[];
+  timeline: DashboardPoint[];
+  heatmap: HeatmapRow[];
+  impacts: DashboardImpact[];
+  mappings: ImpactMapping[];
+  calls: CallSummary[];
+  alerts: DashboardAlert[];
+  incidents: DashboardIncident[];
+  versions: VersionMarker[];
+  /** @nullable */
+  versionNote: string | null;
+  monitoring: Monitoring;
+  scoreNote: string;
+}
+
+export interface MonitoringInput {
+  enabled: boolean;
+  /**
+     * @minimum 1
+     * @maximum 1440
+     */
+  pollMinutes: number;
 }
 
 export interface TranscriptTurn {
@@ -225,6 +391,22 @@ export type AgentDetail = Agent & ({
 export interface HealthStatus {
   status: string;
 }
+
+export type GetMonitoringDashboardParams = {
+bucket?: GetMonitoringDashboardBucket;
+/**
+ * @maxLength 100
+ */
+timezone?: string;
+};
+
+export type GetMonitoringDashboardBucket = typeof GetMonitoringDashboardBucket[keyof typeof GetMonitoringDashboardBucket];
+
+
+export const GetMonitoringDashboardBucket = {
+  hour: 'hour',
+  day: 'day',
+} as const;
 
 export type ListCallsParams = {
 result?: ListCallsResult;

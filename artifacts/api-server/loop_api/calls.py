@@ -13,6 +13,7 @@ from .monitoring import locked_agent, monitoring_state, poll_locked, utcnow
 from .schemas import CallDetail, CallPage, Monitoring, MonitoringInput
 from .call_categories import category_filter, conversation_categories
 from .criterion_metrics import criterion_breakdown
+from .call_scoring import score_call
 
 router = APIRouter(prefix="/api/agents")
 
@@ -31,7 +32,7 @@ def serialize_call(call: Conversation, detail=False, criteria=()):
         "source": call.source, "versionId": call.version_id, "summary": call.summary,
         "evaluationCount": len(call.evaluations),
         "failureReasons": [item for item in call.evaluations if item["result"] == "failure"] if call.status in ("done", "failed") else [],
-        **criterion_breakdown(call.evaluations, criteria, completed=call.status in ("done", "failed")),
+        **score_call(call, criteria),
     }
     if detail:
         evaluations = list(call.evaluations)
@@ -54,7 +55,7 @@ def update_monitoring(agent_id: UUID, body: MonitoringInput, session: Session = 
     if agent is None:
         raise HTTPException(409, "A poll is running. Try saving the settings again shortly.")
     agent.monitoring_enabled = body.enabled
-    agent.poll_minutes = body.pollMinutes
+    agent.poll_minutes = 1
     agent.next_poll_at = utcnow() if body.enabled else None
     session.commit()
     return monitoring_state(agent)
@@ -66,7 +67,7 @@ def poll_agent(agent_id: UUID, session: Session = Depends(get_session), owner: s
     agent = locked_agent(session, str(agent_id), owner)
     if agent is None:
         raise HTTPException(409, "A poll is already running. Refresh shortly for its result.")
-    poll_locked(session, agent)
+    poll_locked(session, agent, force=True)
     return monitoring_state(agent)
 
 

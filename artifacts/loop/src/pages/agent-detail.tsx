@@ -14,6 +14,8 @@ import { ConnectedCallsTab, ConnectedSettingsTab, MonitoringLine } from "@/compo
 import { getGetAgentQueryKey, useGetAgent } from "@workspace/api-client-react";
 import type { AgentDetail } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConnectedDashboard } from "@/components/loop/monitoring/connected-dashboard";
+import { ImpactMappingsEditor } from "@/components/loop/monitoring/impact-mappings";
 import { AgentPreviewLink } from "@/components/loop/agent-preview-link";
 
 const TABS = ["overview", "calls", "failures", "evals", "fixes", "versions", "settings"] as const;
@@ -120,9 +122,9 @@ function ConnectedAgentDetail({ agent, backHref, tab, onTab }: { agent: AgentDet
       </div>
     </nav>
     <div key={tab} className="rise">
-      {tab === "overview" && <ConnectedOverview agent={agent} />}
+      {tab === "overview" && <><ConnectedDashboard agent={agent} /><div className="mt-8"><ConnectedOverview agent={agent} /></div></>}
       {tab === "calls" && <ConnectedCallsTab agent={agent} />}
-      {tab === "settings" && <ConnectedSettingsTab agent={agent} />}
+      {tab === "settings" && <><ConnectedSettingsTab agent={agent} /><ImpactMappingsEditor agentId={agent.id} /></>}
     </div>
   </div>;
 }
@@ -130,16 +132,9 @@ function ConnectedAgentDetail({ agent, backHref, tab, onTab }: { agent: AgentDet
 function ConnectedOverview({ agent }: { agent: AgentDetail }) {
   const imported = agent.criteria.filter((criterion) => criterion.source === "imported");
   const user = agent.criteria.filter((criterion) => criterion.source === "user");
-  return <div>
+  return <details className="rounded-2xl border border-border bg-card p-4">
+    <summary className="cursor-pointer text-sm font-medium">Evaluation criterion definitions</summary>
     {agent.warning && <p className="mb-5 rounded-xl border border-[#EADFC3] bg-[#FFFCF5] px-4 py-3 text-sm leading-relaxed text-[#735C25]">{agent.warning}</p>}
-    <div className="mb-6 grid gap-3 sm:grid-cols-2">
-      <div className="rounded-xl border border-[#E7E4F0] bg-white p-4"><p className="font-mono text-[10px] uppercase tracking-[.13em] text-[#8B889A]">Evaluation criteria</p><p className="mt-2 font-display text-xl font-semibold" data-testid="text-overview-criteria">{agent.criteriaCount}</p><p className="mt-1 text-xs text-[#858295]">Configured for this agent</p></div>
-      <div className="rounded-xl border border-[#E7E4F0] bg-white p-4"><p className="font-mono text-[10px] uppercase tracking-[.13em] text-[#8B889A]">Criteria with failures</p><p className="mt-2 font-display text-xl font-semibold" data-testid="text-overview-failed-criteria">{agent.failedCriteriaCount == null ? "Not measured" : agent.failedCriteriaCount}</p><p className="mt-1 text-xs text-[#858295]">{agent.failedCriteriaCount == null ? "No measured criterion results yet" : "Distinct criteria failed in at least one completed production call"}</p></div>
-    </div>
-    <div className="mb-6 rounded-2xl border border-[#E7E4F0] bg-white p-5 sm:p-6">
-      <div className="flex items-center justify-between gap-4"><div><p className="font-mono text-[10px] uppercase tracking-[.16em] text-[#8B889A]">Credential</p><h2 className="mt-1 font-display text-xl font-semibold">Stored securely</h2></div><span className="rounded-lg bg-[#F5F4FA] px-3 py-2 font-mono text-sm text-[#575467]" data-testid="text-key-masked">{agent.keyMasked}</span></div>
-      <p className="mt-2 text-xs text-[#858295]">Only the masked representation is returned to this screen.</p>
-    </div>
     <div className="rounded-2xl border border-[#E7E4F0] bg-white p-5 sm:p-6">
       <div className="mb-5"><p className="font-mono text-[10px] uppercase tracking-[.16em] text-[#8B889A]">Current setup</p><h2 className="mt-1 font-display text-xl font-semibold">Success criteria</h2></div>
       {agent.criteria.length === 0 ? <p className="rounded-xl border border-dashed border-[#DEDCE9] px-4 py-8 text-center text-sm text-[#858295]">No criteria were returned for this agent.</p> : <div className="space-y-6">
@@ -155,5 +150,5 @@ function ConnectedOverview({ agent }: { agent: AgentDetail }) {
       </div>}
     </div>
     <div className="mt-5 flex items-start gap-2 rounded-xl bg-[#F5F3FF] p-4 text-xs leading-relaxed text-[#656279]"><span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#5B4BFF]" /><p>Metrics are measured from real calls only. Values show "Not measured" until enough results exist. No sample statistics are shown here.</p></div>
-  </div>;
+  </details>;
 }

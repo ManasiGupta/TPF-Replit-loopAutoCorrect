@@ -64,6 +64,32 @@ def conversation_data(remote, agent_id: str) -> dict:
         elif outcomes and all(item == "success" for item in outcomes) and analysis.call_successful != "unknown":
             result = "passed"
     environment = remote.environment
+    errors, guardrails, failing_turns = [], [], set()
+    if remote.metadata.error is not None:
+        errors.append("ElevenLabs reported a runtime error.")
+    reason = (remote.metadata.termination_reason or "").lower()
+    if any(word in reason for word in ("error", "timeout", "cut_off", "cut-off", "interrupted")):
+        errors.append(f"Conversation ended: {remote.metadata.termination_reason}")
+    for index, turn in enumerate(remote.transcript):
+        if turn.role == "agent" and turn.interrupted:
+            errors.append("An agent reply was cut off.")
+            failing_turns.add(index)
+        for tool_result in turn.tool_results or []:
+            if getattr(tool_result, "is_error", False):
+                errors.append("A tool returned an error.")
+                failing_turns.add(index)
+        for trigger in turn.triggered_guardrails or []:
+            guardrails.append({"name": trigger.guardrail_name or trigger.guardrail_type,
+                               "type": trigger.guardrail_type, "turnIndex": index})
+            failing_turns.add(index)
+        message = (turn.message or "").strip()
+        # Highlight exact returned evidence only; don't guess a failing turn.
+        if len(message) >= 15 and any(message.casefold() in (e["rationale"] or "").casefold() for e in results if e["result"] == "failure"):
+            failing_turns.add(index)
+    if remote.status == "failed" or (remote.status == "done" and (
+        errors or not any(t.role == "agent" and (t.message or "").strip() for t in remote.transcript)
+    )):
+        result = "failed"
     return {
         "remote_id": remote.conversation_id,
         "started_at": datetime.fromtimestamp(remote.metadata.start_time_unix_secs, timezone.utc),
@@ -74,12 +100,22 @@ def conversation_data(remote, agent_id: str) -> dict:
         "source": environment if environment in ("production", "test") else "unknown",
         "environment": environment, "version_id": remote.version_id,
         "summary": analysis.transcript_summary if analysis else None,
-        "transcript": [{"role": turn.role, "text": turn.message, "timeInCallSecs": turn.time_in_call_secs} for turn in remote.transcript],
+        "transcript": [{"role": turn.role, "text": turn.message, "timeInCallSecs": turn.time_in_call_secs,
+                        "interrupted": bool(turn.interrupted)} for turn in remote.transcript],
         "evaluations": results,
+        "provider_metadata": {
+            "title": analysis.call_summary_title if analysis else None,
+            "language": remote.metadata.main_language,
+            "messageCount": (remote.user_message_count + remote.agent_message_count
+                             if remote.user_message_count is not None and remote.agent_message_count is not None
+                             else sum(bool(t.message) for t in remote.transcript)),
+            "guardrails": guardrails, "errorReasons": list(dict.fromkeys(errors)),
+            "failedTurnIndexes": sorted(failing_turns),
+        },
     }
 
 
-def recent_conversations(key: str, agent_id: str, since: int, pending_ids: list[str]):
+def recent_conversations(key: str, agent_id: str, since: int | None, pending_ids: list[str]):
     """Paginate the complete recent interval and revisit older unfinished calls."""
     seen_ids, seen_cursors = set(), set()
     cursor = None
@@ -111,6 +147,29 @@ def recent_conversations(key: str, agent_id: str, since: int, pending_ids: list[
                 if remote.conversation_id != conversation_id:
                     raise HTTPException(502, "ElevenLabs returned a different conversation than requested.")
                 yield conversation_data(remote, agent_id)
+
+
+def deployment_history(key: str, agent_id: str):
+    """Read actual deployment timestamps, without guessing a historical publisher/version."""
+    result, seen, page = [], set(), 0
+    with provider_errors(), client_for(key) as client:
+        while True:
+            response = client.conversational_ai.agents.deployments.list(
+                agent_id, page=page, page_size=100, request_options={"max_retries": 0},
+            )
+            for item in response.results:
+                if item.id in seen:
+                    raise HTTPException(502, "ElevenLabs repeated a deployment page. Deployment history was not updated.")
+                seen.add(item.id)
+                result.append({
+                    "id": item.id, "at": datetime.fromtimestamp(item.deployed_at_unix_secs, timezone.utc).isoformat(),
+                    "version": None, "publisher": "Unknown",
+                    "evidence": f"Provider deployment timestamp; historical version and shipper are not supplied. Source: {item.source or 'unknown'}.",
+                })
+            if len(response.results) < 100 or (response.meta and response.meta.total is not None and len(result) >= response.meta.total):
+                break
+            page += 1
+    return result
 
 
 def discover(key: str) -> list[dict]:

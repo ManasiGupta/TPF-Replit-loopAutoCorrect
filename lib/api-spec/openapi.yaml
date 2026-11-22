@@ -13,6 +13,35 @@ tags:
   - name: health
     description: Health operations
 paths:
+  /agents/{id}/dashboard:
+    get:
+      operationId: getMonitoringDashboard
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+        - { in: query, name: bucket, schema: { type: string, enum: [hour, day], default: hour } }
+        - { in: query, name: timezone, schema: { type: string, default: UTC, maxLength: 100 } }
+      responses:
+        "200":
+          description: Monitoring analytics over every imported conversation
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MonitoringDashboard" }
+  /agents/{id}/impact-mappings:
+    put:
+      operationId: updateImpactMappings
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ImpactMappingsInput" }
+      responses:
+        "200":
+          description: Saved criterion impact mappings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ImpactMappingsInput" }
   /setup:
     get:
       operationId: getSetup
@@ -167,6 +196,120 @@ components:
       name: __session
       description: Clerk-managed same-origin session cookie. Never collect or attach session tokens manually in browser code.
   schemas:
+    GuardrailTrigger:
+      type: object
+      required: [name, type, turnIndex]
+      properties:
+        name: { type: string }
+        type: { type: string }
+        turnIndex: { type: integer }
+    ImpactMapping:
+      type: object
+      required: [criterionId, name, impact]
+      properties:
+        criterionId: { type: string }
+        name: { type: string }
+        impact: { type: string, enum: [Margin, Trust, Returns, Conversion, Experience] }
+    ImpactMappingsInput:
+      type: object
+      required: [mappings]
+      properties:
+        mappings: { type: array, items: { $ref: "#/components/schemas/ImpactMapping" } }
+    DashboardMetric:
+      type: object
+      required: [key, label, value, baseline, delta, unit, note]
+      properties:
+        key: { type: string }
+        label: { type: string }
+        value: { type: ["number", "null"] }
+        baseline: { type: ["number", "null"] }
+        delta: { type: ["number", "null"] }
+        unit: { type: string, enum: [count, score, percent] }
+        note: { type: string }
+    DashboardPoint:
+      type: object
+      required: [at, score, calls, errorCalls]
+      properties:
+        at: { type: string }
+        score: { type: ["number", "null"] }
+        calls: { type: integer }
+        errorCalls: { type: integer }
+    HeatmapCell:
+      type: object
+      required: [at, passRate, passed, failed, unknown, callIds]
+      properties:
+        at: { type: string }
+        passRate: { type: ["number", "null"] }
+        passed: { type: integer }
+        failed: { type: integer }
+        unknown: { type: integer }
+        callIds: { type: array, items: { type: string } }
+    HeatmapRow:
+      type: object
+      required: [criterionId, name, cells]
+      properties:
+        criterionId: { type: string }
+        name: { type: string }
+        cells: { type: array, items: { $ref: "#/components/schemas/HeatmapCell" } }
+    DashboardImpact:
+      type: object
+      required: [impact, failedCalls, callIds]
+      properties:
+        impact: { type: string }
+        failedCalls: { type: integer }
+        callIds: { type: array, items: { type: string } }
+    DashboardIncident:
+      type: object
+      required: [id, title, kind, state, firstSeenAt, lastSeenAt, detail, callIds]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        kind: { type: string }
+        state: { type: string, enum: [open, resolved] }
+        firstSeenAt: { type: string }
+        lastSeenAt: { type: string }
+        detail: { type: string }
+        callIds: { type: array, items: { type: string } }
+    DashboardAlert:
+      type: object
+      required: [id, title, detail, incidentId, callIds]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        detail: { type: string }
+        incidentId: { type: string }
+        callIds: { type: array, items: { type: string } }
+    VersionMarker:
+      type: object
+      required: [id, at, version, publisher, evidence]
+      properties:
+        id: { type: string }
+        at: { type: string }
+        version: { type: ["string", "null"] }
+        publisher: { type: string, enum: [Loop, Person, Unknown] }
+        evidence: { type: string }
+    MonitoringDashboard:
+      type: object
+      required: [generatedAt, timezone, bucket, periodStart, periodEnd, totalCalls, metrics, timeline, heatmap, impacts, mappings, calls, alerts, incidents, versions, versionNote, monitoring, scoreNote]
+      properties:
+        generatedAt: { type: string }
+        timezone: { type: string }
+        bucket: { type: string }
+        periodStart: { type: string }
+        periodEnd: { type: string }
+        totalCalls: { type: integer }
+        metrics: { type: array, items: { $ref: "#/components/schemas/DashboardMetric" } }
+        timeline: { type: array, items: { $ref: "#/components/schemas/DashboardPoint" } }
+        heatmap: { type: array, items: { $ref: "#/components/schemas/HeatmapRow" } }
+        impacts: { type: array, items: { $ref: "#/components/schemas/DashboardImpact" } }
+        mappings: { type: array, items: { $ref: "#/components/schemas/ImpactMapping" } }
+        calls: { type: array, items: { $ref: "#/components/schemas/CallSummary" } }
+        alerts: { type: array, items: { $ref: "#/components/schemas/DashboardAlert" } }
+        incidents: { type: array, items: { $ref: "#/components/schemas/DashboardIncident" } }
+        versions: { type: array, items: { $ref: "#/components/schemas/VersionMarker" } }
+        versionNote: { type: ["string", "null"] }
+        monitoring: { $ref: "#/components/schemas/Monitoring" }
+        scoreNote: { type: string }
     MonitoringInput:
       type: object
       required: [enabled, pollMinutes]
@@ -199,6 +342,14 @@ components:
         summary: { type: ["string", "null"] }
         evaluationCount: { type: integer }
         failureReasons: { type: array, items: { $ref: "#/components/schemas/CallEvaluation" } }
+        title: { type: string }
+        messageCount: { type: integer }
+        language: { type: ["string", "null"] }
+        score: { type: ["number", "null"] }
+        outcome: { type: string, enum: [error, analyzing, scored, unknown] }
+        errorReasons: { type: array, items: { type: string } }
+        failedTurnIndexes: { type: array, items: { type: integer } }
+        guardrails: { type: array, items: { $ref: "#/components/schemas/GuardrailTrigger" } }
         criteriaCount: { type: integer, description: Distinct configured or reported criteria; missing results remain unknown }
         failedCriteriaCount: { type: integer }
         passedCriteriaCount: { type: integer }

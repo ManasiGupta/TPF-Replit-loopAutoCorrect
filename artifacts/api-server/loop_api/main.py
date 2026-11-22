@@ -20,6 +20,7 @@ from .security import encrypt_api_key, get_cipher
 from .auth import authenticate_request, current_owner
 from .clerk_proxy import router as clerk_router
 from .calls import router as calls_router, measured_stats
+from .dashboard_routes import router as dashboard_router
 from .monitoring import monitor_loop, monitoring_state
 from .request_validation import CONNECTION_PATHS, connection_validation
 
@@ -41,6 +42,7 @@ async def lifespan(app):
 app = FastAPI(title="Loop API", docs_url="/api/docs", openapi_url="/api/openapi.json", redoc_url=None, lifespan=lifespan)
 app.include_router(clerk_router)
 app.include_router(calls_router)
+app.include_router(dashboard_router)
 
 
 @app.middleware("http")

@@ -21,11 +21,14 @@ class Agent(Base):
     encrypted_api_key: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     monitoring_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
-    poll_minutes: Mapped[int] = mapped_column(Integer, default=5, server_default="5")
+    poll_minutes: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     last_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_success_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     next_poll_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
     poll_error: Mapped[str | None] = mapped_column(Text)
+    impact_mappings: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
+    release_history: Mapped[list] = mapped_column(JSONB, default=list, server_default="[]")
+    release_error: Mapped[str | None] = mapped_column(Text)
     criteria: Mapped[list["EvalCriterion"]] = relationship(back_populates="agent", cascade="all, delete-orphan", lazy="selectin", order_by="EvalCriterion.position")
 
 
@@ -65,3 +68,21 @@ class Conversation(Base):
     summary: Mapped[str | None] = mapped_column(Text)
     transcript: Mapped[list] = mapped_column(JSONB, default=list)
     evaluations: Mapped[list] = mapped_column(JSONB, default=list)
+    provider_metadata: Mapped[dict] = mapped_column(JSONB, default=dict, server_default="{}")
+
+
+class MonitoringIncident(Base):
+    __tablename__ = "loop_monitoring_incidents"
+    __table_args__ = (Index("uq_loop_incident_fingerprint", "agent_id", "fingerprint", unique=True),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    agent_id: Mapped[str] = mapped_column(ForeignKey("loop_agents.id", ondelete="CASCADE"), index=True)
+    fingerprint: Mapped[str] = mapped_column(Text)
+    title: Mapped[str] = mapped_column(Text)
+    kind: Mapped[str] = mapped_column(String(30))
+    state: Mapped[str] = mapped_column(String(20), default="open")
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    detail: Mapped[str] = mapped_column(Text)
+    call_ids: Mapped[list] = mapped_column(JSONB, default=list)

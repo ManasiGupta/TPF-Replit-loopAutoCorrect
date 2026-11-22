@@ -3,3 +3,5 @@ export * from "./generated/types";
 // Path-parameter validator and query-parameter type share Orval's name.
 export { ListCallsParams } from "./generated/api";
 export type { ListCallsParams as ListCallsQuery } from "./generated/types/listCallsParams";
+export { GetMonitoringDashboardParams } from "./generated/api";
+export type { GetMonitoringDashboardParams as MonitoringDashboardQuery } from "./generated/types/getMonitoringDashboardParams";

@@ -8,6 +8,159 @@
 import * as zod from 'zod';
 
 
+export const GetMonitoringDashboardParams = zod.object({
+  "id": zod.uuid()
+})
+
+export const getMonitoringDashboardQueryBucketDefault = `hour`;
+export const getMonitoringDashboardQueryTimezoneDefault = `UTC`;
+export const getMonitoringDashboardQueryTimezoneMax = 100;
+
+
+
+export const GetMonitoringDashboardQueryParams = zod.object({
+  "bucket": zod.enum(['hour', 'day']).default(getMonitoringDashboardQueryBucketDefault),
+  "timezone": zod.coerce.string().max(getMonitoringDashboardQueryTimezoneMax).default(getMonitoringDashboardQueryTimezoneDefault)
+})
+
+export const GetMonitoringDashboardResponse = zod.object({
+  "generatedAt": zod.string(),
+  "timezone": zod.string(),
+  "bucket": zod.string(),
+  "periodStart": zod.string(),
+  "periodEnd": zod.string(),
+  "totalCalls": zod.int(),
+  "metrics": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "value": zod.number().nullable(),
+  "baseline": zod.number().nullable(),
+  "delta": zod.number().nullable(),
+  "unit": zod.enum(['count', 'score', 'percent']),
+  "note": zod.string()
+})),
+  "timeline": zod.array(zod.object({
+  "at": zod.string(),
+  "score": zod.number().nullable(),
+  "calls": zod.int(),
+  "errorCalls": zod.int()
+})),
+  "heatmap": zod.array(zod.object({
+  "criterionId": zod.string(),
+  "name": zod.string(),
+  "cells": zod.array(zod.object({
+  "at": zod.string(),
+  "passRate": zod.number().nullable(),
+  "passed": zod.int(),
+  "failed": zod.int(),
+  "unknown": zod.int(),
+  "callIds": zod.array(zod.string())
+}))
+})),
+  "impacts": zod.array(zod.object({
+  "impact": zod.string(),
+  "failedCalls": zod.int(),
+  "callIds": zod.array(zod.string())
+})),
+  "mappings": zod.array(zod.object({
+  "criterionId": zod.string(),
+  "name": zod.string(),
+  "impact": zod.enum(['Margin', 'Trust', 'Returns', 'Conversion', 'Experience'])
+})),
+  "calls": zod.array(zod.object({
+  "id": zod.string(),
+  "conversationId": zod.string(),
+  "startedAt": zod.string(),
+  "durationSecs": zod.int(),
+  "status": zod.string(),
+  "result": zod.enum(['passed', 'failed', 'unknown']),
+  "source": zod.enum(['production', 'test', 'unknown']),
+  "versionId": zod.string().nullable(),
+  "summary": zod.string().nullable(),
+  "evaluationCount": zod.int(),
+  "failureReasons": zod.array(zod.object({
+  "criterionId": zod.string(),
+  "name": zod.string(),
+  "result": zod.enum(['success', 'failure', 'unknown']),
+  "rationale": zod.string(),
+  "score": zod.int().nullable(),
+  "maxScore": zod.int().nullable()
+})),
+  "title": zod.string().optional(),
+  "messageCount": zod.int().optional(),
+  "language": zod.string().nullish(),
+  "score": zod.number().nullish(),
+  "outcome": zod.enum(['error', 'analyzing', 'scored', 'unknown']).optional(),
+  "errorReasons": zod.array(zod.string()).optional(),
+  "failedTurnIndexes": zod.array(zod.int()).optional(),
+  "guardrails": zod.array(zod.object({
+  "name": zod.string(),
+  "type": zod.string(),
+  "turnIndex": zod.int()
+})).optional(),
+  "criteriaCount": zod.int().describe('Distinct configured or reported criteria; missing results remain unknown'),
+  "failedCriteriaCount": zod.int(),
+  "passedCriteriaCount": zod.int(),
+  "unknownCriteriaCount": zod.int()
+})),
+  "alerts": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "detail": zod.string(),
+  "incidentId": zod.string(),
+  "callIds": zod.array(zod.string())
+})),
+  "incidents": zod.array(zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "kind": zod.string(),
+  "state": zod.enum(['open', 'resolved']),
+  "firstSeenAt": zod.string(),
+  "lastSeenAt": zod.string(),
+  "detail": zod.string(),
+  "callIds": zod.array(zod.string())
+})),
+  "versions": zod.array(zod.object({
+  "id": zod.string(),
+  "at": zod.string(),
+  "version": zod.string().nullable(),
+  "publisher": zod.enum(['Loop', 'Person', 'Unknown']),
+  "evidence": zod.string()
+})),
+  "versionNote": zod.string().nullable(),
+  "monitoring": zod.object({
+  "enabled": zod.boolean(),
+  "pollMinutes": zod.int(),
+  "lastAttemptAt": zod.string().nullable(),
+  "lastSuccessAt": zod.string().nullable(),
+  "nextPollAt": zod.string().nullable(),
+  "lastError": zod.string().nullable()
+}),
+  "scoreNote": zod.string()
+})
+
+
+export const UpdateImpactMappingsParams = zod.object({
+  "id": zod.uuid()
+})
+
+export const UpdateImpactMappingsBody = zod.object({
+  "mappings": zod.array(zod.object({
+  "criterionId": zod.string(),
+  "name": zod.string(),
+  "impact": zod.enum(['Margin', 'Trust', 'Returns', 'Conversion', 'Experience'])
+}))
+})
+
+export const UpdateImpactMappingsResponse = zod.object({
+  "mappings": zod.array(zod.object({
+  "criterionId": zod.string(),
+  "name": zod.string(),
+  "impact": zod.enum(['Margin', 'Trust', 'Returns', 'Conversion', 'Experience'])
+}))
+})
+
+
 export const GetSetupResponse = zod.object({
   "databaseReady": zod.boolean(),
   "encryptionReady": zod.boolean(),
@@ -242,6 +395,18 @@ export const ListCallsResponse = zod.object({
   "score": zod.int().nullable(),
   "maxScore": zod.int().nullable()
 })),
+  "title": zod.string().optional(),
+  "messageCount": zod.int().optional(),
+  "language": zod.string().nullish(),
+  "score": zod.number().nullish(),
+  "outcome": zod.enum(['error', 'analyzing', 'scored', 'unknown']).optional(),
+  "errorReasons": zod.array(zod.string()).optional(),
+  "failedTurnIndexes": zod.array(zod.int()).optional(),
+  "guardrails": zod.array(zod.object({
+  "name": zod.string(),
+  "type": zod.string(),
+  "turnIndex": zod.int()
+})).optional(),
   "criteriaCount": zod.int().describe('Distinct configured or reported criteria; missing results remain unknown'),
   "failedCriteriaCount": zod.int(),
   "passedCriteriaCount": zod.int(),
@@ -290,6 +455,18 @@ export const GetCallResponse = zod.object({
   "score": zod.int().nullable(),
   "maxScore": zod.int().nullable()
 })),
+  "title": zod.string().optional(),
+  "messageCount": zod.int().optional(),
+  "language": zod.string().nullish(),
+  "score": zod.number().nullish(),
+  "outcome": zod.enum(['error', 'analyzing', 'scored', 'unknown']).optional(),
+  "errorReasons": zod.array(zod.string()).optional(),
+  "failedTurnIndexes": zod.array(zod.int()).optional(),
+  "guardrails": zod.array(zod.object({
+  "name": zod.string(),
+  "type": zod.string(),
+  "turnIndex": zod.int()
+})).optional(),
   "criteriaCount": zod.int().describe('Distinct configured or reported criteria; missing results remain unknown'),
   "failedCriteriaCount": zod.int(),
   "passedCriteriaCount": zod.int(),

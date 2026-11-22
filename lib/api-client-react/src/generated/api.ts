@@ -33,9 +33,12 @@ import type {
   CallPage,
   ConnectionInput,
   CredentialInput,
+  GetMonitoringDashboardParams,
   HealthStatus,
+  ImpactMappingsInput,
   ListCallsParams,
   Monitoring,
+  MonitoringDashboard,
   MonitoringInput,
   RemoteAgent,
   Setup
@@ -67,6 +70,199 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetMonitoringDashboardUrl = (id: string,
+    params?: GetMonitoringDashboardParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/agents/${id}/dashboard?${stringifiedParams}` : `/api/agents/${id}/dashboard`
+}
+
+export const getMonitoringDashboard = async (id: string,
+    params?: GetMonitoringDashboardParams, options?: Parameters<typeof customFetch>[1]): Promise<MonitoringDashboard> => {
+
+  return customFetch<MonitoringDashboard>(getGetMonitoringDashboardUrl(id,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMonitoringDashboardQueryKey = (id: string,
+    params?: GetMonitoringDashboardParams,) => {
+    return [
+    `/api/agents/${id}/dashboard`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetMonitoringDashboardQueryOptions = <TData = Awaited<ReturnType<typeof getMonitoringDashboard>>, TError = ErrorType<unknown>>(id: string,
+    params?: GetMonitoringDashboardParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMonitoringDashboard>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMonitoringDashboardQueryKey(id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMonitoringDashboard>>> = ({ signal }) => getMonitoringDashboard(id,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMonitoringDashboard>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetMonitoringDashboardQueryResult = NonNullable<Awaited<ReturnType<typeof getMonitoringDashboard>>>
+export type GetMonitoringDashboardQueryError = ErrorType<unknown>
+
+
+export function useGetMonitoringDashboard<TData = Awaited<ReturnType<typeof getMonitoringDashboard>>, TError = ErrorType<unknown>>(
+ id: string,
+    params: undefined |  GetMonitoringDashboardParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMonitoringDashboard>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMonitoringDashboard>>,
+          TError,
+          Awaited<ReturnType<typeof getMonitoringDashboard>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMonitoringDashboard<TData = Awaited<ReturnType<typeof getMonitoringDashboard>>, TError = ErrorType<unknown>>(
+ id: string,
+    params?: GetMonitoringDashboardParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMonitoringDashboard>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMonitoringDashboard>>,
+          TError,
+          Awaited<ReturnType<typeof getMonitoringDashboard>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMonitoringDashboard<TData = Awaited<ReturnType<typeof getMonitoringDashboard>>, TError = ErrorType<unknown>>(
+ id: string,
+    params?: GetMonitoringDashboardParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMonitoringDashboard>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetMonitoringDashboard<TData = Awaited<ReturnType<typeof getMonitoringDashboard>>, TError = ErrorType<unknown>>(
+ id: string,
+    params?: GetMonitoringDashboardParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMonitoringDashboard>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetMonitoringDashboardQueryOptions(id,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateImpactMappingsUrl = (id: string,) => {
+
+
+
+
+  return `/api/agents/${id}/impact-mappings`
+}
+
+export const updateImpactMappings = async (id: string,
+    impactMappingsInput: ImpactMappingsInput, options?: Parameters<typeof customFetch>[1]): Promise<ImpactMappingsInput> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ImpactMappingsInput>(getUpdateImpactMappingsUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(impactMappingsInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateImpactMappingsMutationKey = () => ['updateImpactMappings'] as const;
+
+export const getUpdateImpactMappingsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateImpactMappings>>, TError,UpdateImpactMappingsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateImpactMappings>>, TError,UpdateImpactMappingsMutationVariables, TContext> => {
+
+const mutationKey = getUpdateImpactMappingsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateImpactMappings>>, UpdateImpactMappingsMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateImpactMappings(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateImpactMappingsMutationResult = NonNullable<Awaited<ReturnType<typeof updateImpactMappings>>>
+    export type UpdateImpactMappingsMutationBody = BodyType<ImpactMappingsInput>
+    export type UpdateImpactMappingsMutationError = ErrorType<unknown>
+    export type UpdateImpactMappingsMutationVariables = {id: string;data: BodyType<ImpactMappingsInput>}
+
+    export const useUpdateImpactMappings = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateImpactMappings>>, TError,UpdateImpactMappingsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateImpactMappings>>,
+        TError,
+        UpdateImpactMappingsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateImpactMappingsMutationOptions(options), queryClient);
+    }
 
 export const getGetSetupUrl = () => {
 

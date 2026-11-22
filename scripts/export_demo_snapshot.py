@@ -22,6 +22,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--agent-id", required=True, type=UUID)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--dashboard-output", type=Path)
     parser.add_argument("--approve-sharing-original-content", action="store_true")
     args = parser.parse_args()
     if not args.approve_sharing_original_content:
@@ -33,6 +34,9 @@ def main():
             select(Agent).where(Agent.id == str(args.agent_id), Agent.owner_id.is_not(None))
             .options(load_only(
                 Agent.id, Agent.name, Agent.remote_id, Agent.platform, Agent.created_at,
+                Agent.impact_mappings, Agent.release_history, Agent.release_error,
+                Agent.monitoring_enabled, Agent.poll_minutes, Agent.last_attempt_at,
+                Agent.last_success_at, Agent.next_poll_at, Agent.poll_error,
                 raiseload=True,
             ))
         )
@@ -61,6 +65,13 @@ def main():
             },
             "calls": calls,
         }
+        if args.dashboard_output:
+            from loop_api.dashboard_service import dashboard
+            dashboard_snapshot = {bucket: dashboard(session, agent, bucket, "Asia/Calcutta") for bucket in ("hour", "day")}
+            for item in dashboard_snapshot.values():
+                item["monitoring"] = {**item["monitoring"], "enabled": False, "nextPollAt": None}
+            args.dashboard_output.parent.mkdir(parents=True, exist_ok=True)
+            args.dashboard_output.write_text(json.dumps(dashboard_snapshot, ensure_ascii=False, indent=2) + "\n")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2) + "\n")
     # Do not print any original content, identifiers, or connection credentials.

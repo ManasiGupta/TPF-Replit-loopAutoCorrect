@@ -6,8 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CallEvaluation } from './callEvaluation';
+import type { CallSummaryOutcome } from './callSummaryOutcome';
 import type { CallSummaryResult } from './callSummaryResult';
 import type { CallSummarySource } from './callSummarySource';
+import type { GuardrailTrigger } from './guardrailTrigger';
 
 export interface CallSummary {
   id: string;
@@ -23,6 +25,16 @@ export interface CallSummary {
   summary: string | null;
   evaluationCount: number;
   failureReasons: CallEvaluation[];
+  title?: string;
+  messageCount?: number;
+  /** @nullable */
+  language?: string | null;
+  /** @nullable */
+  score?: number | null;
+  outcome?: CallSummaryOutcome;
+  errorReasons?: string[];
+  failedTurnIndexes?: number[];
+  guardrails?: GuardrailTrigger[];
   /** Distinct configured or reported criteria; missing results remain unknown */
   criteriaCount: number;
   failedCriteriaCount: number;

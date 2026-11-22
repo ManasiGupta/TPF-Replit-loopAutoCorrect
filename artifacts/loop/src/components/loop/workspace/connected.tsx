@@ -28,9 +28,10 @@ function errMsg(e: unknown) {
   return "Request failed";
 }
 
-function useInvalidateAgent(id: string) {
+export function useInvalidateAgent(id: string) {
   const qc = useQueryClient();
   return () => {
+    qc.invalidateQueries({ predicate: (q) => typeof q.queryKey[0] === "string" && q.queryKey[0] === `/api/agents/${id}/dashboard` });
     qc.invalidateQueries({ queryKey: getGetAgentQueryKey(id) });
     qc.invalidateQueries({ queryKey: getListAgentsQueryKey() });
     qc.invalidateQueries({ queryKey: getListCallsQueryKey(id) });
@@ -61,16 +62,15 @@ export function MonitoringLine({ m }: { m: Monitoring }) {
   </span>;
 }
 
-function PollButton({ agentId, m }: { agentId: string; m: Monitoring }) {
+export function PollButton({ agentId, m }: { agentId: string; m: Monitoring }) {
   const { toast } = useToast();
   const inval = useInvalidateAgent(agentId);
   const poll = usePollAgent();
-  const due = m.enabled && (!m.nextPollAt || new Date(m.nextPollAt).getTime() <= Date.now());
-  const label = !m.enabled ? "Monitoring paused" : poll.isPending ? "Checking…" : due ? "Check now (due)" : "Check if due";
-  return <button type="button" data-testid="button-poll" disabled={!m.enabled || poll.isPending}
-    title={m.enabled ? "Runs a check only when the next scheduled check is due. It does not force a refresh." : "Enable monitoring to allow checks."}
+  const label = poll.isPending ? "Syncing…" : "Check now";
+  return <button type="button" data-testid="button-poll" disabled={poll.isPending}
+    title={m.enabled ? "Syncs new conversations from ElevenLabs now." : "Monitoring is paused. This runs one sync now without resuming the schedule."}
     onClick={() => poll.mutate({ id: agentId }, {
-      onSuccess: (res) => { inval(); toast({ title: res.lastError ? "Check reported an error" : "Check request sent", description: res.lastError ?? (res.nextPollAt ? `Next scheduled check ${ago(res.nextPollAt)}.` : "Schedule updated.") }); },
+      onSuccess: (res) => { inval(); toast({ title: res.lastError ? "Sync reported an error" : "Synced", description: res.lastError ?? (res.lastSuccessAt ? `Last synced ${fmtTime(res.lastSuccessAt)}.` : "Sync complete.") }); },
       onError: (e) => toast({ title: "Could not request check", description: errMsg(e), variant: "destructive" }),
     })}
     className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium transition-all hover:border-primary/40 hover:text-primary active:scale-[.98] disabled:cursor-not-allowed disabled:opacity-50">
@@ -216,7 +216,7 @@ export function ConnectedSettingsTab({ agent }: { agent: AgentDetail }) {
       </dl>
       {m.lastError ? <p className="mt-3 flex gap-2 rounded-lg border border-warn/30 bg-warn/8 px-3 py-2.5 text-xs leading-relaxed text-warn" data-testid="text-last-error"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{m.lastError}</p>
         : <p className="mt-3 text-xs text-muted-foreground">No errors on the last check.</p>}
-      <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">"Check" only runs when monitoring is on and the next check is due. It never forces an early refresh.</p>
+      <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">"Check now" runs one sync immediately, even when monitoring is paused. It does not change the schedule.</p>
     </section>
   </div>;
 }

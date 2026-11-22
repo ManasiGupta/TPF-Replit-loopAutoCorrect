@@ -41,6 +41,8 @@ export default function DemoPage() {
   const [result, setResult] = useState<RF>("all");
   const [source, setSource] = useState<SF>("all");
   const [category, setCategory] = useState("all");
+  const completed = calls.filter((c) => c.status === "done" || c.status === "failed");
+  const successRate = completed.length ? (completed.filter((c) => c.criteriaCount > 0 && c.passedCriteriaCount === c.criteriaCount && c.outcome === "scored" && c.result !== "failed" && !(c.errorReasons?.length)).length / completed.length) * 100 : null;
   const [open, setOpen] = useState<string | null>(null);
   const sorted = useMemo(() => [...calls].sort((a, b) => b.startedAt.localeCompare(a.startedAt)), [calls]);
   const bySource = sorted.filter((c) => source === "all" || c.source === source);
@@ -94,10 +96,10 @@ export default function DemoPage() {
       <p className="mt-2 break-all font-mono text-xs text-[#858295]">{agent.remoteId} · connected {fmtDate(agent.createdAt)}</p>
 
       <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Metric label="Evaluation criteria" value={String(agent.criteriaCount)} hint="Saved success criteria" testId="text-demo-criteria" />
-        <Metric label="Criteria with failures" value={agent.failedCriteriaCount == null ? "—" : String(agent.failedCriteriaCount)} hint={agent.failedCriteriaCount == null ? "No measured criterion results" : "Distinct criteria failed in at least one production call"} testId="text-demo-failed-criteria" />
-        <Metric label="Calls" value={String(calls.length)} hint="Recorded in this snapshot" testId="text-demo-calls" />
-        <Metric label="Unknown criterion results" value={String(calls.reduce((n, c) => n + c.unknownCriteriaCount, 0))} hint="Across all calls; not counted as failures" testId="text-demo-unknown" />
+        <Metric label="Calls success rate" value={successRate == null ? "—" : `${successRate.toFixed(1)}%`} hint="Completed calls with every criterion passed and no errors" testId="text-demo-success-rate" />
+        <Metric label="Total criteria" value={String(agent.criteriaCount)} hint="Saved success criteria" testId="text-demo-criteria" />
+        <Metric label="Total calls" value={String(calls.length)} hint="All imported conversations in this snapshot" testId="text-demo-calls" />
+        <Metric label="Criteria with failures" value={agent.failedCriteriaCount == null ? "—" : String(agent.failedCriteriaCount)} hint="Distinct criteria failed at least once" testId="text-demo-failed-criteria" />
       </div>
 
       <div className="mt-6"><AgentPreviewLink remoteId={agent.remoteId} frozen /></div>

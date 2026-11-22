@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
@@ -111,6 +111,14 @@ class CallSummary(BaseModel):
     failedCriteriaCount: int
     passedCriteriaCount: int
     unknownCriteriaCount: int
+    title: str = "Conversation"
+    messageCount: int = 0
+    language: str | None = None
+    score: float | None = None
+    outcome: Literal["error", "analyzing", "scored", "unknown"] = "unknown"
+    errorReasons: list[str] = Field(default_factory=list)
+    failedTurnIndexes: list[int] = Field(default_factory=list)
+    guardrails: list[dict] = Field(default_factory=list)
 
 
 class TranscriptTurn(BaseModel):

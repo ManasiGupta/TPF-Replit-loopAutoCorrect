@@ -27,4 +27,14 @@ def apply_schema(engine):
             ):
                 connection.execute(text(f"ALTER TABLE loop_agents ADD COLUMN IF NOT EXISTS {definition}"))
             connection.execute(text("CREATE INDEX IF NOT EXISTS ix_loop_agents_next_poll_at ON loop_agents (next_poll_at)"))
+            for definition in (
+                "impact_mappings JSONB NOT NULL DEFAULT '{}'",
+                "release_history JSONB NOT NULL DEFAULT '[]'",
+                "release_error TEXT",
+            ):
+                connection.execute(text(f"ALTER TABLE loop_agents ADD COLUMN IF NOT EXISTS {definition}"))
+            connection.execute(text("ALTER TABLE loop_agents ALTER COLUMN poll_minutes SET DEFAULT 1"))
+            connection.execute(text("UPDATE loop_agents SET poll_minutes = 1 WHERE poll_minutes <> 1"))
+        if inspect(connection).has_table("loop_conversations"):
+            connection.execute(text("ALTER TABLE loop_conversations ADD COLUMN IF NOT EXISTS provider_metadata JSONB NOT NULL DEFAULT '{}'"))
         Base.metadata.create_all(connection)

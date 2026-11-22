@@ -8,8 +8,8 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, lazyload
 
 from .database import get_engine
-from .models import Agent, Conversation
-from .provider import recent_conversations
+from .models import Agent, Conversation, EvalCriterion
+from .provider import recent_conversations, load_agent, deployment_history
 from .security import decrypt_api_key
 
 logger = logging.getLogger("loop")
@@ -23,7 +23,7 @@ def monitoring_state(agent: Agent) -> dict:
     def iso(value):
         return value.isoformat() if value else None
     return {
-        "enabled": agent.monitoring_enabled, "pollMinutes": agent.poll_minutes,
+        "enabled": agent.monitoring_enabled, "pollMinutes": 1,
         "lastAttemptAt": iso(agent.last_attempt_at), "lastSuccessAt": iso(agent.last_success_at),
         "nextPollAt": iso(agent.next_poll_at), "lastError": agent.poll_error,
     }
@@ -37,24 +37,37 @@ def locked_agent(session, agent_id, owner=None):
     return session.scalar(query.with_for_update(skip_locked=True).execution_options(populate_existing=True))
 
 
-def poll_locked(session: Session, agent: Agent):
+def poll_locked(session: Session, agent: Agent, force=False):
     """Caller owns the row lock until commit, including throughout provider I/O."""
     now = utcnow()
-    if not agent.monitoring_enabled or (agent.next_poll_at and agent.next_poll_at > now):
+    if not force and (not agent.monitoring_enabled or (agent.next_poll_at and agent.next_poll_at > now)):
         return
     error = None
     try:
         # One atomic savepoint: provider failure cannot commit partial pages.
         with session.begin_nested():
             key = decrypt_api_key(agent.encrypted_api_key)
-            since = int((agent.last_success_at - timedelta(days=1) if agent.last_success_at else now - timedelta(days=7)).timestamp())
+            name, provider_criteria = load_agent(key, agent.remote_id)
+            agent.name = name
+            existing = {c.remote_id: c for c in agent.criteria if c.remote_id}
+            attached = []
+            for position, data in enumerate(provider_criteria):
+                criterion = existing.get(data["remote_id"])
+                if criterion is None:
+                    criterion = EvalCriterion(agent_id=agent.id, source="imported")
+                criterion.remote_id, criterion.name, criterion.text = data["remote_id"], data["name"], data["text"]
+                criterion.position, criterion.provider_definition = position, data["definition"]
+                attached.append(criterion)
+            attached.extend(c for c in agent.criteria if c.source == "user" and not c.remote_id)
+            agent.criteria = attached
             pending = list(session.scalars(select(Conversation.remote_id).where(
                 Conversation.agent_id == agent.id,
                 or_(Conversation.status.in_(["initiated", "in-progress", "processing"]),
                     Conversation.result == "unknown"),
             )))
             names = {criterion.remote_id: criterion.name for criterion in agent.criteria if criterion.remote_id}
-            for data in recent_conversations(key, agent.remote_id, since, pending):
+            # Full pagination + details on every refresh: no seven-day backfill cap.
+            for data in recent_conversations(key, agent.remote_id, None, pending):
                 row = session.scalar(select(Conversation).where(
                     Conversation.agent_id == agent.id, Conversation.remote_id == data["remote_id"],
                 ))
@@ -67,6 +80,13 @@ def poll_locked(session: Session, agent: Agent):
                     setattr(row, field, value)
             # Force validation/constraints before recording a successful poll.
             session.flush()
+            try:
+                agent.release_history = deployment_history(key, agent.remote_id)
+                agent.release_error = None
+            except HTTPException as exc:
+                agent.release_error = f"Deployment history unavailable: {exc.detail}"
+            from .dashboard_service import refresh_incidents
+            refresh_incidents(session, agent, now)
     except HTTPException as exc:
         # Only our sanitized errors are persisted, never SDK bodies or credentials.
         error = exc.detail
@@ -74,7 +94,8 @@ def poll_locked(session: Session, agent: Agent):
         logger.warning("Conversation poll failed (%s)", type(exc).__name__)
         error = "Call monitoring could not finish. No partial poll was saved; it will retry at the next interval."
     agent.last_attempt_at = now
-    agent.next_poll_at = utcnow() + timedelta(minutes=agent.poll_minutes)
+    agent.poll_minutes = 1
+    agent.next_poll_at = utcnow() + timedelta(seconds=60) if agent.monitoring_enabled else None
     agent.poll_error = error
     if error is None:
         agent.last_success_at = now
