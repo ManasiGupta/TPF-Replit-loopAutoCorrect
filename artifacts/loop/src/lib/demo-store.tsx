@@ -2,11 +2,11 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { Agent, Criterion, DemoState, Fix } from "./demo-types";
 import { buildAgent, EXAMPLE_REMOTE, seedState } from "./demo-seed";
 
-const KEY = "loop-demo-state-v2";
+const LEGACY_KEY = "loop-demo-state-v2";
 
-function load(): DemoState {
+function load(key: string): DemoState {
   try {
-    const raw = window.localStorage.getItem(KEY);
+    const raw = window.localStorage.getItem(key);
     if (raw) {
       const s = JSON.parse(raw) as DemoState;
       if (Array.isArray(s.agents)) return s;
@@ -34,8 +34,9 @@ type Actions = {
 
 const Ctx = createContext<Actions | null>(null);
 
-export function DemoProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<DemoState>(load);
+export function DemoProvider({ children, userId }: { children: ReactNode; userId: string }) {
+  const key = `loop-demo-state-v3:${encodeURIComponent(userId)}`;
+  const [state, setState] = useState<DemoState>(() => load(key));
   const ref = useRef(state);
   const commit = useCallback((fn: (s: DemoState) => DemoState) => {
     const next = fn(ref.current);
@@ -43,8 +44,11 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     setState(next);
   }, []);
   useEffect(() => {
-    try { window.localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* ignore quota */ }
-  }, [state]);
+    try {
+      window.localStorage.removeItem(LEGACY_KEY);
+      window.localStorage.setItem(key, JSON.stringify(state));
+    } catch { /* ignore quota */ }
+  }, [state, key]);
 
   const connectExample = useCallback((specId: string, extra: string[]) => {
     const spec = EXAMPLE_REMOTE.find((s) => s.id === specId);

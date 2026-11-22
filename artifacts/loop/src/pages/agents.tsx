@@ -1,111 +1,71 @@
-import { useMemo, useState } from "react";
 import { Link } from "wouter";
-import { ArrowRight, Search, X, Plug, Plus } from "lucide-react";
-import { useDemo, agentStats } from "@/lib/demo-store";
-import { Empty, Eyebrow, Stat, ago } from "@/components/loop/ui";
-import { cn } from "@/lib/utils";
-
-function Spark({ values }: { values: number[] }) {
-  if (values.length < 2) return <span className="font-mono text-[10px] text-muted-foreground">1 version</span>;
-  const min = Math.min(...values) - 2, max = Math.max(...values) + 2;
-  const pts = values.map((v, i) => `${(i / (values.length - 1)) * 72},${22 - ((v - min) / (max - min)) * 20}`).join(" ");
-  const last = pts.split(" ").pop()!.split(",");
-  return (
-    <svg viewBox="-2 -2 78 28" className="h-6 w-20 text-primary" aria-hidden>
-      <polyline points={pts} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
-      <circle cx={last[0]} cy={last[1]} r="2.4" fill="currentColor" />
-    </svg>
-  );
-}
+import { ArrowRight, CircleAlert, FlaskConical, Plug, RefreshCw, Radio, Search, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { getListAgentsQueryKey, useListAgents } from "@workspace/api-client-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AgentsPage() {
-  const { state } = useDemo();
   const [search, setSearch] = useState("");
-  const rows = useMemo(() => state.agents.map((a) => ({
-    a, s: agentStats(state, a.id),
-    trend: state.versions.filter((v) => v.agentId === a.id).sort((x, y) => x.n - y.n).map((v) => v.passRate),
-    last: state.calls.find((c) => c.agentId === a.id)?.at,
-  })), [state]);
+  const query = useListAgents({ query: { queryKey: getListAgentsQueryKey(), retry: false } });
+  const agents = query.data ?? [];
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return q ? rows.filter(({ a }) => `${a.name} ${a.org} ${a.remoteId}`.toLowerCase().includes(q)) : rows;
-  }, [rows, search]);
+    const needle = search.trim().toLowerCase();
+    return needle ? agents.filter((agent) => `${agent.name} ${agent.remoteId} ${agent.platform}`.toLowerCase().includes(needle)) : agents;
+  }, [agents, search]);
 
-  const totals = useMemo(() => {
-    const rates = rows.map((r) => r.s.passRate).filter((x): x is number => x !== null);
-    return {
-      avg: rates.length ? rates.reduce((a, b) => a + b, 0) / rates.length : 0,
-      open: rows.reduce((n, r) => n + r.s.open, 0),
-      review: rows.reduce((n, r) => n + r.s.pendingFixes, 0),
-      calls: rows.reduce((n, r) => n + r.s.calls, 0),
-    };
-  }, [rows]);
-
-  return (
-    <div>
-      <div className="rise mb-7 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <Eyebrow className="mb-1">Workspace</Eyebrow>
-          <h1 className="font-display text-4xl font-semibold">All agents</h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">Where each voice agent is failing, and what is waiting on you.</p>
-        </div>
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-          <div className="relative w-full sm:w-72">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, org, or agent ID" data-testid="input-search" className="h-9 w-full rounded-md border border-input bg-card pl-9 pr-8 text-sm outline-none transition-shadow placeholder:text-muted-foreground focus:ring-2 focus:ring-ring/30" />
-            {search && <button onClick={() => setSearch("")} aria-label="Clear search" data-testid="button-clear-search" className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>}
-          </div>
-          <Link href="/connect" data-testid="link-connect-another" className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full bg-primary px-3.5 text-sm font-medium text-primary-foreground transition-transform active:scale-[.97]">
-            <Plus className="h-4 w-4" />Connect agent
-          </Link>
-        </div>
+  return <div className="mx-auto max-w-6xl text-[#1A1A2E]">
+    <div className="rise mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <p className="mb-2 font-mono text-[10px] uppercase tracking-[.2em] text-[#5B4BFF]">Your workspace</p>
+        <h1 className="font-display text-4xl font-semibold tracking-[-.035em]">All agents</h1>
+        <p className="mt-2 text-sm text-[#77758A]">Real ElevenLabs connections saved to your account.</p>
       </div>
-
-      <dl className="rise mb-6 grid grid-cols-2 divide-border overflow-hidden rounded-xl border border-border bg-card md:grid-cols-4 md:divide-x [&>*:nth-child(2n)]:border-l [&>*:nth-child(n+3)]:border-t md:[&>*]:border-0" style={{ animationDelay: "50ms" }}>
-        <Stat label="Agents" value={rows.length} hint={`${rows.filter((r) => r.a.status === "monitoring").length} monitoring`} />
-        <Stat label="Avg pass rate" value={`${totals.avg.toFixed(1)}%`} hint="Live versions" tone="pass" testId="text-avg-pass" />
-        <Stat label="Open failures" value={totals.open} hint={`across ${totals.calls} sampled calls`} tone="fail" testId="text-open-failures" />
-        <Stat label="Fixes to review" value={totals.review} hint="Candidates awaiting approval" tone="primary" />
-      </dl>
-
-      {rows.length === 0 ? (
-        <div className="rounded-xl border border-border bg-card">
-          <Empty icon={Plug} title="No agents in this demo" body="Connect a sample agent to explore the workspace.">
-            <Link href="/connect" className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground">Connect sample agent</Link>
-          </Empty>
-        </div>
-      ) : (
-        <div className="overflow-hidden rounded-xl border border-border bg-card">
-          <div className="hidden grid-cols-[minmax(0,1fr)_6rem_7rem_7.5rem_7rem_1.25rem] gap-4 border-b border-border px-5 py-2.5 font-mono text-[10.5px] uppercase tracking-wider text-muted-foreground md:grid">
-            <span>Agent</span><span>Trend</span><span>Pass rate</span><span>Open failures</span><span>Review</span><span />
-          </div>
-          {filtered.length === 0 ? (
-            <div className="px-5 py-12 text-center text-sm text-muted-foreground" data-testid="text-no-results">No agents match "{search}".</div>
-          ) : (
-            <ul>
-              {filtered.map(({ a, s, trend, last }, i) => (
-                <li key={a.id} className="rise border-b border-border/70 last:border-0" style={{ animationDelay: `${80 + i * 40}ms` }}>
-                  <Link href={`/agents/${a.id}`} data-testid={`link-agent-${a.id}`} className="group grid grid-cols-2 gap-x-4 gap-y-2 px-5 py-4 transition-colors hover:bg-secondary/50 md:grid-cols-[minmax(0,1fr)_6rem_7rem_7.5rem_7rem_1.25rem] md:items-center">
-                    <div className="col-span-2 min-w-0 md:col-span-1">
-                      <div className="flex items-center gap-2">
-                        <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", a.status === "monitoring" ? "bg-pass" : "bg-muted-foreground/50")} />
-                        <span className="truncate font-medium" data-testid={`text-agent-name-${a.id}`}>{a.org} <span className="text-muted-foreground">/</span> {a.name}</span>
-                        <span className="rounded-full bg-secondary px-2 py-px font-mono text-[10px] text-muted-foreground">v{a.liveVersion}</span>
-                      </div>
-                      <p className="mt-0.5 truncate pl-3.5 font-mono text-[11px] text-muted-foreground">{a.remoteId} · {a.status === "paused" ? "paused" : last ? `last call ${ago(last)}` : "no calls yet"}</p>
-                    </div>
-                    <Spark values={trend} />
-                    <span className="text-sm font-medium tabular" data-testid={`text-passrate-${a.id}`}><span className="text-muted-foreground md:hidden">Pass </span>{s.passRate?.toFixed(1)}%</span>
-                    <span className={cn("text-sm tabular", s.open > 0 ? "text-destructive" : "text-muted-foreground")} data-testid={`text-failures-${a.id}`}>{s.open} <span className="text-xs text-muted-foreground">in {s.openClusters} cluster{s.openClusters === 1 ? "" : "s"}</span></span>
-                    <span>{s.pendingFixes > 0 ? <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">{s.pendingFixes} fix ready</span> : <span className="text-xs text-muted-foreground">Clear</span>}</span>
-                    <ArrowRight className="hidden h-4 w-4 -translate-x-1 text-muted-foreground opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100 md:block" />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
+      <div className="flex flex-wrap gap-2">
+        <Link href="/sample" data-testid="link-sample-workspace" className="inline-flex h-10 items-center gap-2 rounded-full border border-[#DED9FF] bg-[#F5F3FF] px-4 text-sm font-medium text-[#5B4BFF] transition-colors hover:bg-[#EFECFF]"><FlaskConical className="h-4 w-4" />Explore sample workspace</Link>
+        <Link href="/connect" data-testid="link-connect-agent" className="inline-flex h-10 items-center gap-2 rounded-full bg-[#5B4BFF] px-5 text-sm font-semibold text-white shadow-[0_10px_25px_-14px_rgba(91,75,255,.8)] transition-transform hover:-translate-y-0.5">Connect agent <ArrowRight className="h-4 w-4" /></Link>
+      </div>
     </div>
-  );
+
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center gap-2 text-sm text-[#68667A]"><Radio className="h-4 w-4 text-[#5B4BFF]" />{agents.length} connected {agents.length === 1 ? "agent" : "agents"}</div>
+      <label className="relative w-full sm:w-72">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9290A1]" />
+        <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search name or agent ID" data-testid="input-search" className="h-10 w-full rounded-full border border-[#E2DFED] bg-white pl-9 pr-9 text-sm outline-none transition-shadow placeholder:text-[#AAA7B8] focus:border-[#9388FF] focus:ring-4 focus:ring-[#5B4BFF]/10" />
+        {search && <button type="button" onClick={() => setSearch("")} aria-label="Clear search" data-testid="button-clear-search" className="absolute right-3 top-1/2 -translate-y-1/2 rounded text-[#77758A] hover:text-[#5B4BFF]"><X className="h-3.5 w-3.5" /></button>}
+      </label>
+    </div>
+
+    {query.isLoading ? <div className="space-y-3">{[1, 2, 3].map((item) => <Skeleton key={item} className="h-24 w-full rounded-2xl" />)}</div>
+      : query.isError ? <div className="rounded-2xl border border-[#F0D7D9] bg-white p-8 text-center">
+        <CircleAlert className="mx-auto h-7 w-7 text-[#B34D5C]" /><h2 className="mt-3 font-display text-xl font-semibold">Could not load your agents</h2><p className="mt-2 text-sm text-[#77758A]">Your saved connections are still secure. Check your session and retry.</p>
+        <button onClick={() => query.refetch()} data-testid="button-retry-agents" className="mt-5 inline-flex h-9 items-center gap-2 rounded-full border border-[#DDD9EA] px-4 text-sm font-medium hover:bg-[#F8F7FC]"><RefreshCw className="h-4 w-4" />Try again</button>
+      </div>
+      : agents.length === 0 ? <div className="rounded-2xl border border-dashed border-[#DCD9E9] bg-white/70 px-6 py-16 text-center">
+        <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-[#F1EFFF] text-[#5B4BFF]"><Plug className="h-5 w-5" /></span>
+        <h2 className="mt-5 font-display text-2xl font-semibold">Nothing connected yet</h2><p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-[#77758A]">Connect an existing ElevenLabs agent to review its current setup and add your own success criteria.</p>
+        <Link href="/connect" data-testid="link-empty-connect" className="mt-6 inline-flex h-10 items-center gap-2 rounded-full bg-[#5B4BFF] px-5 text-sm font-semibold text-white">Connect your first agent <ArrowRight className="h-4 w-4" /></Link>
+      </div>
+      : filtered.length === 0 ? <div className="rounded-2xl border border-[#E7E4F0] bg-white px-5 py-12 text-center text-sm text-[#77758A]">No connected agents match “{search}”.</div>
+      : <ul className="grid gap-3">
+        {filtered.map((agent, index) => <li key={agent.id} className="rise" style={{ animationDelay: `${index * 45}ms` }}>
+          <Link href={`/agents/${agent.id}`} data-testid={`link-agent-${agent.id}`} className="group grid gap-4 rounded-2xl border border-[#E7E4F0] bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-[#C9C2FF] hover:shadow-[0_18px_44px_-34px_rgba(57,43,156,.42)] sm:grid-cols-[1fr_auto] sm:items-center sm:px-5 sm:py-4">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-display text-lg font-semibold tracking-tight">{agent.name}</span>
+                <span className="rounded-full bg-[#F2F0FF] px-2.5 py-1 font-mono text-[10px] text-[#5B4BFF]">{agent.platform}</span>
+                <span className="rounded-full bg-[#F6F5FA] px-2.5 py-1 text-[10px] text-[#69677A]">{agent.status}</span>
+              </div>
+              <p className="mt-1.5 truncate font-mono text-xs text-[#858295]">ID {agent.remoteId} <span className="px-1.5 text-[#C0BDCC]">/</span>{agent.criteriaCount} saved criteria</p>
+            </div>
+            <div className="flex items-center justify-between gap-6 border-t border-[#F0EEF5] pt-3 sm:border-0 sm:pt-0">
+              <div className="flex gap-6">
+                <div><p className="font-mono text-[9px] uppercase tracking-[.14em] text-[#9693A4]">Pass rate</p><p className="mt-1 text-sm font-semibold tabular">{agent.passRate == null ? <span className="font-normal text-[#858295]">Not measured</span> : `${agent.passRate.toFixed(1)}%`}</p></div>
+                <div><p className="font-mono text-[9px] uppercase tracking-[.14em] text-[#9693A4]">Open failures</p><p className="mt-1 text-sm font-semibold tabular">{agent.openFailures == null ? <span className="font-normal text-[#858295]">Not measured</span> : agent.openFailures}</p></div>
+              </div>
+              <ArrowRight className="h-4 w-4 text-[#858295] transition-transform group-hover:translate-x-1 group-hover:text-[#5B4BFF]" />
+            </div>
+          </Link>
+        </li>)}
+      </ul>}
+  </div>;
 }

@@ -14,15 +14,28 @@ from .models import Agent, EvalCriterion
 from .provider import discover, load_agent
 from .schemas import AgentDetail, AgentPreview, AgentSelection, AgentSummary, ConnectionInput, CredentialInput, RemoteAgent, Setup
 from .security import encrypt_api_key, get_cipher
+from .auth import authenticate_request, current_owner
+from .clerk_proxy import router as clerk_router
 
 logger = logging.getLogger("loop")
 app = FastAPI(title="Loop API", docs_url="/api/docs", openapi_url="/api/openapi.json", redoc_url=None)
+app.include_router(clerk_router)
 
 
 @app.middleware("http")
 async def secure_responses(request: Request, call_next):
     # No request-body logging, and no browser/proxy caching of connection responses.
-    response = await call_next(request)
+    if request.url.path.startswith("/api") and request.url.path != "/api/healthz" and not (
+        request.url.path == "/api/__clerk" or request.url.path.startswith("/api/__clerk/")
+    ):
+        try:
+            request.state.owner_id = await authenticate_request(request)
+        except HTTPException as error:
+            response = JSONResponse({"error": error.detail}, status_code=error.status_code)
+        else:
+            response = await call_next(request)
+    else:
+        response = await call_next(request)
     response.headers["Cache-Control"] = "no-store"
     response.headers["X-Content-Type-Options"] = "nosniff"
     return response
@@ -78,7 +91,7 @@ def setup():
     messages = []
     try:
         with get_engine().connect() as connection:
-            connection.execute(text("SELECT id FROM loop_agents LIMIT 0"))
+            connection.execute(text("SELECT id, owner_id FROM loop_agents LIMIT 0"))
             connection.execute(text("SELECT id FROM loop_eval_criteria LIMIT 0"))
         database_ready = True
     except (SQLAlchemyError, RuntimeError):
@@ -107,20 +120,20 @@ def preview_agent(body: AgentSelection):
 
 
 @app.get("/api/agents", response_model=list[AgentSummary])
-def list_agents(session: Session = Depends(get_session)):
-    return [serialize(agent) for agent in session.scalars(select(Agent).order_by(Agent.created_at.desc())).all()]
+def list_agents(session: Session = Depends(get_session), owner: str = Depends(current_owner)):
+    return [serialize(agent) for agent in session.scalars(select(Agent).where(Agent.owner_id == owner).order_by(Agent.created_at.desc())).all()]
 
 
 @app.post("/api/agents", response_model=AgentDetail, status_code=201)
-def connect_agent(body: ConnectionInput, session: Session = Depends(get_session)):
+def connect_agent(body: ConnectionInput, session: Session = Depends(get_session), owner: str = Depends(current_owner)):
     ciphertext = encrypt_api_key(body.apiKey.get_secret_value())
-    if session.scalar(select(Agent.id).where(Agent.remote_id == body.remoteId)):
+    if session.scalar(select(Agent.id).where(Agent.owner_id == owner, Agent.remote_id == body.remoteId)):
         raise HTTPException(409, "This agent is already connected. Open it from your Agents list.")
     # Re-fetch on save: never trust browser-submitted provider names or criteria.
     name, criteria = load_agent(body.apiKey.get_secret_value(), body.remoteId)
     if len(criteria) + len(body.userCriteria) > 30:
         raise HTTPException(422, "An agent can have at most 30 evaluation criteria, including imported and additional criteria.")
-    agent = Agent(remote_id=body.remoteId, name=name, encrypted_api_key=ciphertext)
+    agent = Agent(owner_id=owner, remote_id=body.remoteId, name=name, encrypted_api_key=ciphertext)
     for index, criterion in enumerate(criteria):
         agent.criteria.append(EvalCriterion(remote_id=criterion["remote_id"], name=criterion["name"], text=criterion["text"], source="imported", position=index, provider_definition=criterion["definition"]))
     for index, criterion in enumerate(body.userCriteria, start=len(criteria)):
@@ -136,8 +149,8 @@ def connect_agent(body: ConnectionInput, session: Session = Depends(get_session)
 
 
 @app.get("/api/agents/{agent_id}", response_model=AgentDetail)
-def get_agent(agent_id: UUID, session: Session = Depends(get_session)):
-    agent = session.get(Agent, str(agent_id))
+def get_agent(agent_id: UUID, session: Session = Depends(get_session), owner: str = Depends(current_owner)):
+    agent = session.scalar(select(Agent).where(Agent.id == str(agent_id), Agent.owner_id == owner))
     if agent is None:
         raise HTTPException(404, "Connected agent not found.")
     return serialize(agent, detail=True)

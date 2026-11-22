@@ -1,13 +1,22 @@
 import os
+import base64
 
 from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from fastapi import HTTPException
 
 
 def get_cipher() -> Fernet:
     key = os.environ.get("ENCRYPTION_KEY")
     if not key:
-        raise HTTPException(503, "ENCRYPTION_KEY is missing. Configure a Fernet encryption key in Secrets before saving connections.")
+        # A distinct encryption subkey, not the session signing key itself.
+        # The existing stable app secret means end users only supply ElevenLabs.
+        root = os.environ.get("SESSION_SECRET", "")
+        if len(root.encode()) < 32:
+            raise HTTPException(503, "Secure key storage is not configured. The app owner must configure ENCRYPTION_KEY or a stable SESSION_SECRET of at least 32 bytes.")
+        derived = HKDF(algorithm=hashes.SHA256(), length=32, salt=None, info=b"loop:elevenlabs-key-storage:v1").derive(root.encode())
+        key = base64.urlsafe_b64encode(derived).decode("ascii")
     try:
         return Fernet(key.encode("ascii"))
     except (ValueError, UnicodeError):

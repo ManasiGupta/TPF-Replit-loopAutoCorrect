@@ -1,6 +1,6 @@
 # Loop
 
-A single-user tool for improving ElevenLabs voice agents from production failures.
+A private, account-scoped tool for improving ElevenLabs voice agents from production failures.
 
 ## Product identity
 
@@ -22,10 +22,11 @@ Keep this positioning in descriptions and design briefs. Preserve the user's sup
 
 ## Current requested scope
 
-- The user changed direction: "Just make the UI for loop."
-- Deliver an interactive UI-only prototype with clearly labeled sample data across the intended screens. No API keys, backend setup, or live ElevenLabs/Nebius calls are required for the UI.
-- Preserve the existing Phase 1 backend for possible later use, but do not connect the prototype to it or build additional backend phases unless requested.
-- Demo actions must be clearly simulated and must never modify a live voice agent or store real credentials.
+- The user first requested a UI prototype, then explicitly requested user-facing ElevenLabs connection and private SSO sign-in before Connect.
+- The homepage stays public. Connect and all workspaces require managed Clerk authentication. The Python API also verifies authentication and scopes every saved agent/criterion to its owner.
+- Existing unowned records must be preserved but never automatically assigned to a new user.
+- Live connection/import is distinct from the explicitly labeled, account-isolated sample workspace. Do not claim call ingestion or Nebius analysis is implemented.
+- Sample actions must remain simulated and must never modify a live voice agent or store real credentials.
 
 ## Run & Operate
 
@@ -37,7 +38,8 @@ Keep this positioning in descriptions and design briefs. Preserve the user's sup
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - Backend-only env: `DATABASE_URL` — Postgres connection string; not needed to browse the UI prototype.
-- Backend-only secret: `ENCRYPTION_KEY` — URL-safe base64-encoded 32-byte Fernet key, stable across restarts. Missing/invalid keys block live backend saves, not the UI prototype.
+- Backend-only encryption: a valid explicit `ENCRYPTION_KEY`, or a domain-separated HKDF subkey derived from the existing stable `SESSION_SECRET` (at least 32 bytes). Never rotate/switch the source without migrating ciphertext. Invalid explicit keys fail closed.
+- Clerk keys are provisioned and managed by Replit; do not ask visitors for them. Browser API calls use Clerk's same-origin session cookie, not explicit bearer tokens.
 - Future phases use `NEBIUS_API_KEY` and `NEBIUS_MODEL`; neither is used in Phase 1.
 
 ## Stack
@@ -59,21 +61,21 @@ Keep this positioning in descriptions and design briefs. Preserve the user's sup
 
 - Use Python FastAPI and SQLAlchemy, not the starter Express/Drizzle backend, because the user explicitly requires Python and the official ElevenLabs Python SDK.
 - Do not run Drizzle push against Loop tables. Schema is owned by Python models; apply dev changes explicitly, never at application startup or production build.
-- No signup or billing, per user. This is a private single-user tool, not a public multi-tenant service. Public publishing requires an access-control decision first.
+- The user superseded the original no-signup single-user scope by requesting SSO and per-user privacy. Use managed Clerk accounts and enforce ownership in Python, not just frontend routes.
 - Store only encrypted API keys; never return the ciphertext or original key. Never log request bodies/provider error bodies.
 
 ## Product
 
-- Current frontend: UI-only demo with sample agents, Overview, Calls, Failures, Evals, Fixes, Versions, Settings, Connect, and Fix review. All displayed metrics are labeled sample data, not live measurements.
-- Demo state persists locally in the browser. Reset demo restores samples; no real credentials are collected or saved.
-- Preserved backend Phase 1 supports real agent discovery and encrypted connections but is not called by the UI prototype.
+- The public homepage uses the exact supplied copy, logo and purple branding. Agents live at `/agents`; user connection is at `/connect`.
+- Live agents use the Python discovery/import API. Future monitoring tabs must not substitute sample measurements for connected agents.
+- The separate sample workspace persists only in account-namespaced browser state. Clear sensitive state on logout and never adopt legacy global demo data for the first account.
 
 ## User preferences
 
 - "Build in phases. I will send one phase at a time. Do not build ahead."
 - After every phase, list every ElevenLabs/Nebius call with exact endpoint or SDK method and confirmed-versus-assumed status; run phase end to end and report errors.
 - Never use simulate-conversation. Later test phases must use Tests endpoints, duplicate the agent during verification, and never ship regressions.
-- Eval changes require approval; re-score compared versions whenever evals change. No signup or billing.
+- Eval changes require approval; re-score compared versions whenever evals change. No billing.
 
 ## Gotchas
 
@@ -83,6 +85,7 @@ Keep this positioning in descriptions and design briefs. Preserve the user's sup
 - ElevenLabs analysis-item attachments are authoritative when present. Import stops explicitly for pinned historical/multiple versions or non-materialized system definitions rather than silently importing incorrect criteria.
 - User-added criteria in Phase 1 are saved in Loop only; Phase 1 makes no provider writes.
 - Keep ENCRYPTION_KEY stable; replacing it without re-encrypting records makes saved credentials unreadable.
+- See `docs/private-connections.md` for ownership migration, encryption-source stability, managed Python auth proxy, and provider-call audit.
 
 ## Pointers
 

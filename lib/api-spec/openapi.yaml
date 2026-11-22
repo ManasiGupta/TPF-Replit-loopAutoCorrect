@@ -3,7 +3,9 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Private agent connections. All operations except health require a verified Clerk session cookie; saved agents and criteria are scoped to the authenticated owner.
+security:
+  - clerkSession: []
 servers:
   - url: /api
     description: Base API path
@@ -90,6 +92,7 @@ paths:
               schema: { $ref: "#/components/schemas/AgentDetail" }
   /healthz:
     get:
+      security: []
       operationId: healthCheck
       tags: [health]
       summary: Health check
@@ -102,6 +105,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
 components:
+  securitySchemes:
+    clerkSession:
+      type: apiKey
+      in: cookie
+      name: __session
+      description: Clerk-managed same-origin session cookie. Never collect or attach session tokens manually in browser code.
   schemas:
     Setup:
       type: object

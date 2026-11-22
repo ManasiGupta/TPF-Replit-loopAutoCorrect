@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 export default function FixReviewPage() {
   const { id = "", fixId = "" } = useParams<{ id: string; fixId: string }>();
   const { state, updateFix, rerunFix, approveFix, rejectFix } = useDemo();
+  const agentBase = state.agents.some((sampleAgent) => sampleAgent.id === id) ? "/sample" : "/agents";
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const fix = state.fixes.find((f) => f.id === fixId && f.agentId === id);
@@ -31,7 +32,7 @@ export default function FixReviewPage() {
   if (!fix || !agent || !base) {
     return (
       <div className="mx-auto max-w-xl rounded-xl border border-border bg-card">
-        <Empty icon={SearchX} title="Fix not found" body="This candidate may have been cleared by a demo reset."><Link href={`/agents/${id}?tab=fixes`} className="text-sm font-medium text-primary hover:underline">Back to fixes</Link></Empty>
+        <Empty icon={SearchX} title="Fix not found" body="This candidate may have been cleared by a demo reset."><Link href={`${agentBase}/${id}?tab=fixes`} className="text-sm font-medium text-primary hover:underline">Back to fixes</Link></Empty>
       </div>
     );
   }
@@ -51,9 +52,9 @@ export default function FixReviewPage() {
   return (
     <div>
       <nav aria-label="Breadcrumb" className="mb-5 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-        <Link href="/agents" className="hover:text-foreground">All agents</Link>
+        <Link href={agentBase} className="hover:text-foreground">{agentBase === "/sample" ? "Sample agents" : "All agents"}</Link>
         <span aria-hidden className="text-muted-foreground/50">/</span>
-        <Link href={`/agents/${id}?tab=fixes`} data-testid="link-back" className="inline-flex items-center gap-1.5 hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" />{agent.org} / {agent.name} · Fixes</Link>
+        <Link href={`${agentBase}/${id}?tab=fixes`} data-testid="link-back" className="inline-flex items-center gap-1.5 hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5" />{agent.org} / {agent.name} · Fixes</Link>
         <span aria-hidden className="text-muted-foreground/50">/</span>
         <span aria-current="page" className="text-foreground">Fix review</span>
       </nav>

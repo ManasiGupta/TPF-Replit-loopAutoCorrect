@@ -27,7 +27,10 @@ def db():
 
 
 @pytest.fixture
-def client(db):
+def client(db, monkeypatch):
+    async def signed_in(_):
+        return "user_phase_one_test"
+    monkeypatch.setattr(main, "authenticate_request", signed_in)
     main.app.dependency_overrides[get_session] = lambda: db
     with TestClient(main.app) as client:
         yield client
